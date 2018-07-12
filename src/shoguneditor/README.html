@@ -1,0 +1,71 @@
+<html>
+<body>
+<h3>Shogun Editor for QGIS. A plugin</h3>
+<br/>
+<br/>
+
+<div id='help' style='font-size:.9em;'>
+<h3>Info:</h3>
+A QGIS plugin for editing a Shogun GIS client instance. See <a href="https://github.com/terrestris/shogun2">https://github.com/terrestris/shogun2</a><br>
+--Link will be replaced when Shogun2-webapp will be released--<br>
+After connecting with the Shogun ressource (note: that ressource needs to have basic authentication possibility),<br>
+the user can edit applications and layers on the Shogun server, in interaction with the QGIS interface. <br>
+<br>
+<br>
+<b>Features:</b>
+<ul>
+    <li>Add layers from Shogun to QGIS (as WFS, WMS or raw data)
+    <li>
+    <li>Upload new layers (vector and raster format) from QGIS to the Shogun server
+    <li>
+    <li>Upload layer style (vector layers only) from QGIS and apply to the layers in Shogun -> most basic styling is implemented, also the upload of custom symbols for point layers
+    <li>
+    <li>Edit static data like names, descriptions, ...
+    <li>
+    <li>Create new Shogun applications
+    <li>
+    <li>Set applications homeview directly from the QGIS interface
+</ul>
+
+
+<h3>Installation</h3>
+You can install the plugin via the QGIS plugin repository or manually.
+Manually installing: Copy the shogun-editor directory to your qgis plugins
+directory which you should find at:
+<ul>
+  	<li><b>QGIS 2.x:</b>
+  			<br>usually in your home directory you find:
+  				.qgis2/python/plugins/ -   if you need more details see this
+          <a href="https://github.com/g-sherman/Qgis-Plugin-Builder/blob/master/help/source/index.rst#the-copy-method"
+          >link</a> (chapter "The Copy Method")
+    <br>
+    <li>
+    <li><b>QGIS 3.x:</b>
+  			<br>To find the plugins folder, open up QGIS, in the menu go to
+  			Settings->User Profiles -> Open active profile folder
+  				<br>In the file explorer, go to python/plugins/ and paste
+  					the folder there
+</ul>
+<br>After copying just open up QGIS, activate the plugin in the
+plugin manager and you are done
+<br>
+<br>
+<h3>Important notes & missing features</h3>
+<ul>
+  	<li>As already mentioned, the plugin works with basic authentication requests and
+      therefore can only be used with Shogun2-Webapp installations which support basic authentication
+    <li>
+    <li>Currently the plugin only support QGIS 2.X, but a version for 3.X is in
+      process of development and will be released soon
+    <li>
+    <li>Editing of an applications layertree via the plugin is not yet supported
+    <li>
+    <li>Layer styles based on custom icons in Shogun currently cannot be imported
+to QGIS, but styles with custom icons created in QGIS can be uploaded to Shogun
+    <li>
+    <li>Layer styles based on font symbols are currently not supported by the plugin
+</ul>
+
+</div>
+</body>
+</html>

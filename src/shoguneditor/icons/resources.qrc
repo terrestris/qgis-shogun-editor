@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/plugins/shoguneditor" >
+        <file>applications-logo.png</file>
+        <file>layers-logo.png</file>
+        <file>logo-with-tag.png</file>
+        <file>shogun-logo-25x-25px.png</file>
+        <file>shogun-logo-50x50px-round-blue.png</file>
+    </qresource>
+</RCC>

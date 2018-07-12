@@ -1,0 +1,33 @@
+# Mandatory items:
+
+[general]
+name=Shogun Editor
+qgisMinimumVersion=2.0
+qgisMaximumVersion=2.99
+description=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS.
+version=0.1
+author=J. Grieb
+email=jgrieb@terrestris.de
+
+about=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS. Supports editing and creating layers and applications, upload new styles from QGIS to Shogun and more
+
+tracker=http://bugs
+repository=http://repo
+# End of mandatory metadata
+
+# Recommended items:
+
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=python, shogun, rest, wfs, wms, sld
+
+homepage=https://www.terrestris.de/en/
+category=Web
+icon=logo-with-tag.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
