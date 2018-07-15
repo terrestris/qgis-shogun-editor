@@ -1,0 +1,1 @@
+Recompile resources.py with pyrcc and resources.qrc here, then replace the file resources.py in the parent directory
