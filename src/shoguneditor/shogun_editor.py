@@ -8,8 +8,8 @@
 
                              -------------------
         begin                : 2018-05-11
-        copyright            : (C) 2018 by terrestris GmbH & CO. KG
-        email                : jgrieb (at) terretris.de
+        copyright            : (C) 2018 by terrestris GmbH & Co. KG
+        email                : jgrieb (at) terrestris.de, info (at) terrestris.de
         git sha              : $Format:%H$
  ***************************************************************************/
 
@@ -24,7 +24,7 @@
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 import os.path
 

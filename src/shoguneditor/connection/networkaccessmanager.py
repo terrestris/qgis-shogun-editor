@@ -16,8 +16,8 @@
 *                                                                         *
 ***************************************************************************
 
-Minor changes by J. Grieb (jgrieb (at) terretris.de) in 2018 for the
-shogun-editor plugin by terrestris GmbH & CO. KG (https://www.terrestris.de/en/)
+Minor changes by J. Grieb (jgrieb (at) terrestris.de) in 2018 for the
+shogun-editor plugin by terrestris GmbH & Co. KG (https://www.terrestris.de/en/)
 -> for re-using purposes better use the original code
 """
 

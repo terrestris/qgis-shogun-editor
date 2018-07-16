@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 import json
 import os
@@ -36,9 +36,7 @@ class ShogunRessource:
         elif url.endswith('rest'):
             url = url[:-4]
 
-        if not url.startswith('http://') and not url.startswith('https://'):
-            url = 'http://' + url
-        self.baseurl = url      #url should have the format: 'http:.../shogun-webapp/'
+        self.baseurl = url      #url should have the format: 'http(s):.../shogun-webapp/'
         self.name = name
         self.applications = []
         self.layers = []
@@ -57,15 +55,30 @@ class ShogunRessource:
         self.http.setBasicauth('Basic ' + self.basicauth)
 
 
-    # returning a tuple of ('true/false', 'message')
     def checkConnection(self):
+    # returning a tuple of ('true/false', 'message')
+
+    # # TODO: here we check only the cases of http/https faults in the user's
+    #  input. Maybe there should be more error checks for in case the user has
+    #  written an url which is completely different (no http/ https at beginning)
+
         testurl = self.baseurl + 'rest/applications'
         try:
-            testresponse = self.http.request(testurl)
+            testresponse = self.http.request(testurl, method = 'HEAD')
             if testresponse[0]['status'] > 199 and testresponse[0]['status'] < 210:
                 return (True, '')
-        except RequestsException, e:
-            return (False, 'Could not connect to the server - ' + e.message)
+        except RequestsException as e:
+            if self.baseurl.startswith('https'):
+            # if the first try with 'https' was not successfull try http:
+                testurl = 'http' + testurl[5:]
+                try:
+                    testresponse = self.http.request(testurl, method = 'HEAD')
+                    if testresponse[0]['status'] > 199 and testresponse[0]['status'] < 210:
+                        self.baseurl = 'http' + self.baseurl[5:]
+                        return (True, '')
+                except RequestsException as e:
+                    pass
+        return (False, 'Error : Failed to connect to the server')
 
 
 
@@ -171,9 +184,9 @@ class ShogunRessource:
         url = self.baseurl + 'rest/applications/' + str(id)
         response = self.http.request(url)
         updatedApplication = json.loads(response[1])
-        for app in enum(self.applications):
+        for app in enumerate(self.applications):
             if app[1]['id'] == id:
-                self.layers[layer[0]] = updatedApplication
+                self.applications[app[0]] = updatedApplication
         return updatedApplication
 
     def updateSingleLayer(self, id):

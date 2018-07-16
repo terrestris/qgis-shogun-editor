@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
 + the last method "getLabelingAsSld()" was taken
 + from the qgis geoserver explorer plugin by
 + (C) 2016 Boundless, http://boundlessgeo.com
@@ -8,7 +8,7 @@
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 
 import urllib
