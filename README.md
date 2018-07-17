@@ -1,5 +1,3 @@
--- Note: The plugin was submitted to the QGIS plugin repository where it is in process of review,
-    after it has passed it will be available in the official QGIS plugin repository
 
 # Shogun Editor for QGIS. A plugin
 
@@ -43,7 +41,7 @@ After copying just open up QGIS, activate the plugin in the plugin manager and y
     can only be used with Shogun2-Webapp installations which support basic  authentication
     * Currently the plugin only support QGIS 2.X, but a version for 3.X is in
     process of development and will be released soon
-    * Editing of an applications layertree via the plugin is not yet supported
+    * Editing of an application's layertree via the plugin is not yet supported
     * Layer styles based on custom icons in Shogun currently cannot be imported to
     QGIS, but styles with custom icons created in QGIS can be uploaded to Shogun
     * Layer styles based on font symbols are currently not supported by the plugin
