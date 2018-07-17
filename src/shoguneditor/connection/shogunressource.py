@@ -474,3 +474,8 @@ class ShogunRessource:
         h = {'Content-type': 'application/x-www-form-urlencoded; charset=UTF-8'}
         response = self.http.request(url, method = 'POST', body = data, headers = h)
         self.userInfo(response[0]['status'], 'Application', 'copied')
+
+
+    def viewApplicationOnline(self, id):
+        url = self.baseurl + 'client/?id=' + str(id)
+        webbrowser.open(url)
