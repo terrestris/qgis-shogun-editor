@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 from PyQt4.QtGui import QLabel, QLineEdit, QFont, QLabel, QMessageBox, QTreeWidgetItem, QIcon
 from PyQt4.QtCore import QRect, Qt
@@ -543,7 +543,7 @@ class ApplicationItem(TreeItem):
                         self.setText(0, self.name)
 
                     #update the class internal copy of the general settings
-                    newSettings = self.ressource.updateSingleApplication(id)
+                    newSettings = self.ressource.updateSingleApplication(self.id)
                     for attr in self.settings:
                         self.settings[attr] = newSettings[attr]
 

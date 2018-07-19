@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 from PyQt4.QtCore import QObject, Qt, QTimer
 from PyQt4.QtGui import QMenu, QAction, QMessageBox, QTreeWidgetItemIterator
@@ -65,7 +65,8 @@ class Editor(QObject):
             return
         actionDict = {'application':
                         ('Copy Application', 'Load all layers to QGIS',
-                        'Application Settings', 'Delete Application'),
+                        'Application Settings', 'View Application in web browser',
+                         'Delete Application'),
                     'layer':
                         ('Add Layer to QGIS','Layer Settings', 'Delete Layer'),
                     'qgisLayerReference':
@@ -91,6 +92,8 @@ class Editor(QObject):
     def connectAction(self, action, actionName, item):
         if actionName == 'Copy Application':
             action.triggered.connect(item.copyApplication)
+        elif actionName == 'View Application in web browser':
+            action.triggered.connect(lambda: item.ressource.viewApplicationOnline(item.id))
         if actionName == 'Application Settings':
             action.triggered.connect(lambda: self.showApplicationSettings(item))
         elif actionName == 'New Connection':
