@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 /***************************************************************************
  ShogunEditor
                                  A QGIS plugin to connect with a Shogun
@@ -8,8 +8,8 @@
 
                              -------------------
         begin                : 2018-05-11
-        copyright            : (C) 2018 by terrestris GmbH & Co. KG
-        email                : jgrieb (at) terrestris.de, info (at) terrestris.de
+        copyright            : (C) 2018 by terrestris GmbH & CO. KG
+        email                : jgrieb (at) terretris.de
         git sha              : $Format:%H$
  ***************************************************************************/
 
@@ -21,15 +21,15 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-'''
+"""
 
 
 def classFactory(iface):
-    '''Load ShogunEditorclass from file shogun_editor.
+    """Load ShogunEditorclass from file shogun_editor.
 
     :param iface: A QGIS interface instance.
     :type iface: QgisInterface
-    '''
+    """
     #
     from .shogun_editor import ShogunEditor
     return ShogunEditor(iface)

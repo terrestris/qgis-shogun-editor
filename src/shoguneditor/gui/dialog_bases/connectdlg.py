@@ -1,14 +1,20 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
+(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'July 2018'
+__date__ = 'Juli 2018'
 
-from PyQt4.QtCore import QRect
-from PyQt4.QtGui import QDialog, QLabel, QLineEdit, QPushButton
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QRect
+    from qgis.PyQt.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton
+else:
+    from PyQt4.QtCore import QRect
+    from PyQt4.QtGui import QDialog, QLabel, QLineEdit, QPushButton
 
 class ConnectDialog(QDialog):
     def  __init__(self):

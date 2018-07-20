@@ -8,8 +8,8 @@
 
                              -------------------
         begin                : 2018-05-11
-        copyright            : (C) 2018 by terrestris GmbH & Co. KG
-        email                : jgrieb (at) terrestris.de, info (at) terrestris.de
+        copyright            : (C) 2018 by terrestris GmbH & CO. KG
+        email                : jgrieb (at) terretris.de
         git sha              : $Format:%H$
  ***************************************************************************/
 
@@ -24,14 +24,23 @@
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'July 2018'
+__date__ = 'August 2018'
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtWidgets import QAction
+    from qgis.PyQt.QtGui import QIcon
+    from qgis.PyQt.QtCore import Qt
+
+    from . import resources3
+else:
+    from PyQt4.QtCore import Qt
+    from PyQt4.QtGui import QAction, QIcon
+
+    from . import resources2
 
 import os.path
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QAction, QIcon
-
-import resources
 from .gui.editor import Editor
 
 

@@ -16,21 +16,29 @@
 *                                                                         *
 ***************************************************************************
 
-Minor changes by J. Grieb (jgrieb (at) terrestris.de) in 2018 for the
-shogun-editor plugin by terrestris GmbH & Co. KG (https://www.terrestris.de/en/)
+Minor changes by J. Grieb (jgrieb (at) terretris.de) in 2018 for the
+shogun-editor plugin by terrestris GmbH & CO. KG (https://www.terrestris.de/en/)
 -> for re-using purposes better use the original code
 """
-
 
 
 __author__ = 'Alessandro Pasotti'
 __date__ = 'August 2016'
 
-from PyQt4.QtCore import QUrl
-from PyQt4.QtCore import pyqtSlot, QEventLoop
-from PyQt4.QtNetwork import *
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QUrl
+    from qgis.PyQt.QtCore import pyqtSlot, QEventLoop
+    from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply
+    import urllib
+else:
+    from PyQt4.QtCore import QUrl
+    from PyQt4.QtCore import pyqtSlot, QEventLoop
+    from PyQt4.QtNetwork import QNetworkRequest, QNetworkReply
+    import urllib2
+
 from qgis.core import QgsNetworkAccessManager, QgsAuthManager, QgsMessageLog
-import urllib2
 
 # FIXME: ignored
 DEFAULT_MAX_REDIRECTS = 4
@@ -53,11 +61,11 @@ class Map(dict):
         super(Map, self).__init__(*args, **kwargs)
         for arg in args:
             if isinstance(arg, dict):
-                for k, v in arg.iteritems():
+                for k, v in arg.items():
                     self[k] = v
 
         if kwargs:
-            for k, v in kwargs.iteritems():
+            for k, v in kwargs.items():
                 self[k] = v
 
     def __getattr__(self, attr):
@@ -80,6 +88,8 @@ class Map(dict):
 
 class Response(Map):
     pass
+
+PYTHON_VERSION = sys.version_info[0]
 
 class NetworkAccessManager():
     """
@@ -109,6 +119,7 @@ class NetworkAccessManager():
 
 
     """
+
 
     def __init__(self, authid=None, disable_ssl_certificate_validation=False, exception_class=None, debug=True):
         self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
@@ -147,7 +158,10 @@ class NetworkAccessManager():
         })
         req = QNetworkRequest()
         # Avoid double quoting form QUrl
-        url = urllib2.unquote(url)
+        if PYTHON_VERSION >= 3:
+            url = urllib.parse.unquote(url)
+        else:
+            url = urllib2.unquote(url)
         req.setUrl(QUrl(url))
 
         if self.cookie is not None:
@@ -174,6 +188,11 @@ class NetworkAccessManager():
             except KeyError:
                 pass
             for k, v in headers.items():
+                if PYTHON_VERSION >= 3:
+                    if isinstance(k, str):
+                        k = k.encode('utf-8')
+                    if isinstance(v, str):
+                        v = v.encode('utf-8')
                 req.setRawHeader(k, v)
 
         if self.authid:
@@ -192,8 +211,9 @@ class NetworkAccessManager():
         for k, v in headers.items():
             self.msg_log("%s: %s" % (k, v))
         if method.lower() in ['post', 'put']:
-            #if isinstance(body, file):
-            #    body = body.read()
+            if PYTHON_VERSION >= 3:
+                if isinstance(body, str):
+                    body = body.encode('utf-8')
             self.reply = func(req, body)
         else:
             self.reply = func(req)
@@ -224,7 +244,7 @@ class NetworkAccessManager():
                 self.msg_log("Payload :\n%s" % self.http_call_result.text)
             else:
                 self.msg_log("Payload is > 1 KB ...")
-        except Exception, e:
+        except Exception as e:
             raise e
         finally:
             if self.reply is not None:
@@ -242,13 +262,13 @@ class NetworkAccessManager():
                 raise self.exception_class(self.http_call_result.reason)
         return (self.http_call_result, self.http_call_result.text)
 
-    @pyqtSlot()
+    #@pyqtSlot()
     def downloadProgress(self, bytesReceived, bytesTotal):
         """Keep track of the download progress"""
         #self.msg_log("downloadProgress %s of %s ..." % (bytesReceived, bytesTotal))
         pass
 
-    @pyqtSlot()
+    #@pyqtSlot()
     def replyFinished(self):
         err = self.reply.error()
         httpStatus = self.reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
@@ -272,11 +292,16 @@ class NetworkAccessManager():
             else:
                 self.http_call_result.exception = RequestsException(msg)
         else:
-            self.http_call_result.text = str(self.reply.readAll())
+            # since Python 3 readAll() returns a PyQt5.QByteArray, we
+            # want only the data
+            if PYTHON_VERSION >= 3:
+                self.http_call_result.text = self.reply.readAll().data().decode('utf-8')
+            else:
+                self.http_call_result.text = str(self.reply.readAll())
             self.http_call_result.ok = True
         self.reply.deleteLater()
 
-    @pyqtSlot()
+    #@pyqtSlot()
     def sslErrors(self, reply, ssl_errors):
         """
         Handle SSL errors, logging them if debug is on and ignoring them

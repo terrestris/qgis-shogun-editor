@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
+(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
 + the last method "getLabelingAsSld()" was taken
 + from the qgis geoserver explorer plugin by
 + (C) 2016 Boundless, http://boundlessgeo.com
@@ -8,21 +8,31 @@
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'July 2018'
+__date__ = 'Juli 2018'
 
+import sys
 
-import urllib
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QLabel, QPushButton
+    from qgis.PyQt.QtCore import QRect
+    from qgis.PyQt.QtXml import QDomDocument
+    import urllib.request, urllib.parse
+else:
+    from PyQt4.QtGui import QMessageBox, QDialog, QLabel, QPushButton
+    from PyQt4.QtCore import QRect
+    from PyQt4.QtXml import QDomDocument
+    import urllib
+    from qgis.core import Qgis
+
+from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
+from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
 import os.path
 import zipfile
 import tempfile
 
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QGis, QgsMapLayer, QgsCoordinateReferenceSystem
-from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
-from PyQt4.QtGui import QMessageBox, QDialog, QLabel, QPushButton
-from PyQt4.QtCore import QRect
-from PyQt4.QtXml import QDomDocument
-
 from shoguneditor.gui.dialog_bases.addraster import AddRasterDialog
+
+PYTHON_VERSION = sys.version_info[0]
 
 '''This module contains some helper functions for the shogun-editor plugin'''
 
@@ -126,10 +136,16 @@ def createRasterLayer(layerItem, url, epsg):
         #build the fitting url from the baseurl ('http...geoserver.action?')
         #and the parameters
         baseurl = url + 'service=WCS&'
-        url = baseurl + urllib.urlencode(params)
+        if PYTHON_VERSION >= 3:
+            url = baseurl + urllib.parse.urlencode(params)
+        else:
+            url = baseurl + urllib.urlencode(params)
 
         #urlretrieve stores the downloaded file in /tmp/ and returns it's path:
-        response = urllib.urlretrieve(url)
+        if PYTHON_VERSION >= 3:
+            response = urllib.request.urlretrieve(url)
+        else:
+            response = urllib.urlretrieve(url)
         file = response[0]
         #create a raster layer and return it
         return QgsRasterLayer(file, 'QGIS-Layer: ' + layerItem.name)
@@ -145,7 +161,10 @@ def createWmsLayerNormal(layerItem, url, epsg):
         'url': url
         }
 
-    uri = urllib.urlencode(params)
+    if PYTHON_VERSION >= 3:
+        uri = urllib.parse.urlencode(params)
+    else:
+        uri = urllib.urlencode(params)
 
     layer = QgsRasterLayer(uri, 'QGIS-Layer: ' + layerItem.name, 'wms')
     if layer.isValid():
@@ -166,7 +185,10 @@ def createWmsLayerFromShogun(layerItem, url, epsg):
         'url': url + 'layers=' + layerNames
     }
 
-    uri = urllib.urlencode(params)
+    if PYTHON_VERSION >= 3:
+        uri = urllib.parse.urlencode(params)
+    else:
+        uri = urllib.urlencode(params)
     layer = QgsRasterLayer(uri, 'QGIS-Layer: ' + layerItem.name, 'wms')
     if layer.isValid():
         return layer
@@ -189,7 +211,7 @@ def createAndParseSld(qgisLayerItem):
     root.appendChild( namedLayerNode )
 
 
-    qgisLayerItem.layer.writeSld(namedLayerNode, document, '')  ## TODO: if could not be created...
+    qgisLayerItem.layer.writeSld(namedLayerNode, document, '')
 
     nameNode = namedLayerNode.firstChildElement('se:Name')
     oldNameText = nameNode.firstChild()
@@ -235,7 +257,14 @@ def createAndParseSld(qgisLayerItem):
 
     sld = document.toString()
 
-    if qgisLayerItem.layer.labelsEnabled():
+    # in qgis3 layer.writeSld() also incluedes labeling in the output sld,
+    # whereas in qgis2 we have to do this manually by using this module's function
+    # getLabelingAsSld
+    ## TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
+    # every labeling style, thus leading to a less beautiful viewe in the
+    # shogun2-webapp styler - is this a problem?
+
+    if qgisLayerItem.layer.labelsEnabled() and PYTHON_VERSION < 3:
         labelSld = getLabelingAsSld(qgisLayerItem.layer)
         sld = sld.replace('</se:Rule>', labelSld + '</se:Rule>')
 
@@ -260,7 +289,8 @@ def createAndParseSld(qgisLayerItem):
 
 def prepareLayerForUpload(layer, uploadDialog):
     tmpdir = tempfile.mkdtemp()
-    zipfilePath = tmpdir + '/uploadzip.zip'
+    zipfilePath = os.path.join(tmpdir, 'uploadzip.zip')
+    uploadDialog.log('Writing layer as shapefile...')
 
     if layer.type() == QgsMapLayer.VectorLayer:
         if layer.source().endswith('.shp'):
@@ -269,7 +299,7 @@ def prepareLayerForUpload(layer, uploadDialog):
             zipSuccess = createZipFromShapefile(file, zipfilePath, delete = False)
         else:
             path = os.path.join(tmpdir, 'VectorlayerFromQGisPlugin.shp')
-            uploadDialog.log('Writing layer as shapefile...')
+            print("write shp to ",path)
             file = writeShapefile(layer, path)
             if not file:
                 uploadDialog.log('Error: Could not write the shapefile ')
@@ -294,6 +324,7 @@ def prepareLayerForUpload(layer, uploadDialog):
                 return
             zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete = True)
     uploadDialog.log(zipSuccess)
+    print("we are returning")
     return zipfilePath, tmpdir
 
 
@@ -302,8 +333,12 @@ def writeShapefile(layer, path):
 
     writeError = QgsVectorFileWriter.writeAsVectorFormat(
     layer, path,'utf-8', layer.crs(), 'ESRI Shapefile', False)
-    if writeError != 0:     #0 = writing success
-        return False
+    if PYTHON_VERSION >= 3:
+        if writeError[0] != 0: # in QGIS 3 writeAsVectorFormat returns a tuple
+            return False
+    else:
+        if writeError != 0:     #0 = writing success
+            return False
     return path
 
 
@@ -320,6 +355,7 @@ def createZipFromShapefile(filepath, zipfilePath, delete=False):
 
     # create a new zip-archive at zipfilePath
     newZipfile = zipfile.ZipFile(zipfilePath, 'w', zipfile.ZIP_DEFLATED)
+    print("zipfile create:", zipfilePath)
     for part in shapefileParts:
         # add the parts of the shapefile to the zip-archive
         newZipfile.write(part, arcname = os.path.basename(part))
@@ -363,7 +399,7 @@ def createZipFromRaster(pathToRaster, zipfilePath, delete = False):
 
 
 
-#the following function:
+#the following function (we need it only when the plugin is used on qgis2):
 # (c) 2016 Boundless, http://boundlessgeo.com
 # This code is licensed under the GPL 2.0 license.
 def getLabelingAsSld(layer):

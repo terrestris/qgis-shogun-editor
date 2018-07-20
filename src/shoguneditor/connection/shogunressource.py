@@ -1,32 +1,45 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
+(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'July 2018'
+__date__ = 'Juli 2018'
 
-import json
-import os
-from base64 import b64encode
-from urllib import urlretrieve
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtGui import QIcon
+    from qgis.PyQt.QtXml import QDomDocument
+    from qgis.PyQt.QtNetwork import QNetworkRequest, QHttpPart, QHttpMultiPart
+    from qgis.PyQt.QtCore import QFile, QIODevice, QSize
+else:
+    from PyQt4.QtGui import QIcon
+    from PyQt4.QtXml import QDomDocument
+    from PyQt4.QtNetwork import QNetworkRequest, QHttpMultiPart, QHttpPart
+    from PyQt4.QtCore import QFile, QIODevice, QSize
 
 from qgis.core import QgsApplication
 from qgis.gui import QgsMessageBar
-from PyQt4.QtGui import QIcon
-from PyQt4.QtXml import QDomDocument
-from PyQt4.QtNetwork import QNetworkRequest, QHttpMultiPart, QHttpPart
-from PyQt4.QtCore import QFile, QIODevice, QSize
+from base64 import b64encode
+import urllib
+import json
+import os
+import webbrowser
 
 from .networkaccessmanager import NetworkAccessManager, RequestsExceptionConnectionError, RequestsException
 from shoguneditor.layerutils import createAndParseSld
+
+
+PYTHON_VERSION = sys.version_info[0]
 
 class ShogunRessource:
     ''' This class controls all interactions between QGIS and the Shogun ressource,
     apart from creating wfs/wms layers (see layerutils for this). It makes use of the
     class NetworkAccessManager, which calls QgsNetworkAccessManager for all http
     requests'''
+
     def __init__(self, iface, url, name, user = None, pw = None):
         self.iface = iface
         if url.endswith('webapp'):
@@ -36,7 +49,7 @@ class ShogunRessource:
         elif url.endswith('rest'):
             url = url[:-4]
 
-        self.baseurl = url      #url should have the format: 'http(s):.../shogun-webapp/'
+        self.baseurl = url      #url should have the format: 'https:.../shogun2-webapp/'
         self.name = name
         self.applications = []
         self.layers = []
@@ -50,9 +63,13 @@ class ShogunRessource:
 
 
         if user is not None and pw is not None:
-            self.basicauth = b64encode(user + ':' + pw)
-
-        self.http.setBasicauth('Basic ' + self.basicauth)
+            if PYTHON_VERSION >= 3:
+                bytes = (user + ':' + pw).encode('utf-8')
+                self.basicauth = b64encode(bytes)
+                self.http.setBasicauth('Basic '.encode('utf-8') + self.basicauth)
+            else:
+                self.basicauth = b64encode(user + ':' + pw)
+                self.http.setBasicauth('Basic ' + self.basicauth)
 
 
     def checkConnection(self):
@@ -86,12 +103,10 @@ class ShogunRessource:
         #method = 'created'/'updated'/'deleted'
         if status > 199 and status < 300:
             msg = objectName + ' was successfully ' + method
-            lvl = QgsMessageBar.SUCCESS
+            self.iface.messageBar().pushSuccess('Shogun Editor Info:', msg)
         else:
             msg = 'Error: ' + objectName + ' could not be ' + method
-            lvl = QgsMessageBar.CRITICAL
-        self.iface.messageBar().pushMessage('Shogun Editor Info:', msg,
-        level = lvl, duration = 5)
+            self.iface.messageBar().pushCritical('Shogun Editor Info:', msg)
 
 
     def editApplication(self, id, data):
@@ -126,7 +141,6 @@ class ShogunRessource:
             return False
 
 
-
     def editMapConfig(self, id, data):
         edit = None
         for mapconfig in self.mapconfigs:
@@ -139,7 +153,6 @@ class ShogunRessource:
         h = {'Content-type':'application/json'}
         response = self.http.request(url, method='PUT', body = body, headers = h)
         self.userInfo(response[0]['status'], 'Homeview', 'updated')
-
 
     def editObjectPermission(self, id, objectType, permissionType, data):
         url = self.baseurl + 'rest/entitypermission/' + objectType + '/' + str(id)
@@ -165,9 +178,8 @@ class ShogunRessource:
             self.updateExtentsAndMapConfigs()
             return True
         except RequestsExceptionConnectionError:
-            self.iface.messageBar().pushMessage('Connection Error:',
-            'Could not connect to given SHOGUN host application - Please review url',
-            level = QgsMessageBar.CRITICAL, duration = 5)
+            self.iface.messageBar().pushCritical('Connection Error:',
+            'Could not connect to given SHOGUN host application - Please review url')
             return False
 
     def updateApplications(self):
@@ -186,7 +198,7 @@ class ShogunRessource:
         updatedApplication = json.loads(response[1])
         for app in enumerate(self.applications):
             if app[1]['id'] == id:
-                self.applications[app[0]] = updatedApplication
+                self.layers[app[0]] = updatedApplication
         return updatedApplication
 
     def updateSingleLayer(self, id):
@@ -201,8 +213,10 @@ class ShogunRessource:
     #one method for retrieving user and groups permissions (permissionType)
     #for layers or applications (objectType)
     def getObjectPermissions(self, id, objectType, permissionType):
-        url = self.baseurl + 'rest/entitypermission/Project' + objectType   #'Application' or 'Layer'
-        url += '/'+ str(id) + '/Project' + permissionType + '?'     #'User' or 'UserGroup'
+        url = self.baseurl + 'rest/entitypermission/Project' + objectType
+        # objectType = 'Application' or 'Layer'
+        # permissionType = 'User' or 'UserGroup'
+        url += '/'+ str(id) + '/Project' + permissionType + '?'
         response = self.http.request(url)
         return json.loads(response[1])
 
@@ -295,11 +309,11 @@ class ShogunRessource:
 
 
         if '<sld:ExternalGraphic>' in response[1]:
-            self.iface.messageBar().pushMessage('Info',
+            self.iface.messageBar().pushInfo('Info',
             'The downloaded style for the current layer contains custom icons '
             'from SHOGUN, which only serves them as PNG pictures, but QGIS '
             'can only read SVG. Until this is fixed, you see a default QGIS '
-            'style for the layer', level = QgsMessageBar.INFO)
+            'style for the layer')
 
         '''
             featureTypeStyleNode = userStyleNode.firstChildElement('sld:FeatureTypeStyle')
@@ -409,7 +423,10 @@ class ShogunRessource:
 
         textpart = QHttpPart()
         textpart.setHeader(QNetworkRequest.ContentDispositionHeader, 'form-data; name="dataType"')
-        textpart.setBody(dataType)
+        if PYTHON_VERSION >= 3:
+            textpart.setBody(dataType.encode('utf-8'))
+        else:
+            textpart.setBody(dataType)
 
         file = QFile(pathToZipFile)
         file.open(QIODevice.ReadOnly)
@@ -436,8 +453,7 @@ class ShogunRessource:
 
     def requestCrsUpdateOnLayer(self, importJobId):
         url = self.baseurl + '/import/update-crs-for-import.action'
-        data = 'importJobId=' + str(importJobId) + '&taskId=0&fileProjection'
-        data += '=EPSG%3A3857&layerName=&dataType=Vector'
+        data = 'importJobId=' + str(importJobId) + '&taskId=0&fileProjection=EPSG%3A3857&layerName=&dataType=Vector'
         h = {'Content-type': 'application/x-www-form-urlencoded; charset=UTF-8'}
         response = self.http.request(url, method = 'POST', body = data, headers = h)
 
@@ -479,3 +495,19 @@ class ShogunRessource:
     def viewApplicationOnline(self, id):
         url = self.baseurl + 'client/?id=' + str(id)
         webbrowser.open(url)
+
+
+    def createLayerTreeItem(self, data):
+        url = self.baseurl + 'rest/layertree'
+        header = {'Content-type':'application/json'}
+        body = json.dumps(data)
+        response = self.http.request(url, method = 'POST', body = data, headers = h)
+        return response[0]['status']
+
+
+    def updateLayerTreeItem(self, layerTreeItemId, data):
+        url = self.baseurl + 'rest/layertree/' + str(layerTreeItemId)
+        header = {'Content-type':'application/json'}
+        body = json.dumps(data)
+        response = self.http.request(url, method = 'Put', body = data, headers = h)
+        return response[0]['status']

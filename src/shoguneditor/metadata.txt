@@ -1,18 +1,24 @@
-# Mandatory items:
+# This file contains metadata for your plugin. Since
+# version 2.0 of QGIS this is the proper way to supply
+# information about a plugin. The old method of
+# embedding metadata in __init__.py will
+# is no longer supported since version 2.0.
+
+# This file should be included when you package your plugin.# Mandatory items:
 
 [general]
 name=Shogun Editor
 qgisMinimumVersion=2.0
-qgisMaximumVersion=2.99
+qgisMaximumVersion=3.2
 description=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS.
 version=0.1
 author=J. Grieb
-email=jgrieb@terrestris.de, info@terrestris.de
+email=jgrieb (at) terrestris.de, info (at) terrestris.de
 
-about=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS. Supports editing and creating layers and applications, upload new styles from QGIS to Shogun and more. It's funcionalities are in some way similar to the Geoserver Exploerer plugin, but instead of accessing the base geoserver it only interacts with the Shogun2-Webapp client (RESTful) interface.
+about=Provide a brief description of the plugin and its purpose.
 
-tracker=https://github.com/terrestris/qgis-shogun-editor/issues
-repository=https://github.com/terrestris/qgis-shogun-editor
+tracker=http://bugs
+repository=http://repo
 # End of mandatory metadata
 
 # Recommended items:

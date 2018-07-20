@@ -1,21 +1,31 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
+(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'July 2018'
+__date__ = 'Juli 2018'
 
-from PyQt4.QtCore import QRect, Qt
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QRect, Qt
+    from qgis.PyQt import QtWidgets as QtGui
+    from qgis.PyQt.QtGui import QFont
+else:
+    from PyQt4.QtCore import QRect, Qt
+    from PyQt4 import QtGui
+    from PyQt4.QtGui import QFont
+
 from qgis.gui import QgsExtentGroupBox
-from PyQt4 import QtGui
 
 class LayerListItem(QtGui.QListWidgetItem):
-    def __init__(self, text):
+    def __init__(self, text, layerId):
         super(LayerListItem, self).__init__(text)
         self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsDragEnabled |
         Qt.ItemIsSelectable)
+        self.layerId = layerId
 
 class LayerListWidget(QtGui.QListWidget):
     def __init__(self, parent):
@@ -25,7 +35,7 @@ class LayerListWidget(QtGui.QListWidget):
 
     def populateList(self, layers):
         for layer in layers:
-            item = LayerListItem(layer[1])    #sets layer name as text
+            item = LayerListItem(text = layer[1], layerId = layer[0])
             self.addItem(item)
 
     def dragEnterEvent(self, e):
@@ -35,13 +45,21 @@ class LayerListWidget(QtGui.QListWidget):
 
 
 class LayerTreeItem(QtGui.QTreeWidgetItem):
-    def __init__(self, parent, text, role, isChecked):
+    def __init__(self, parent, text, role, id, isChecked, index = None, layerId = None):
         super(LayerTreeItem, self).__init__(parent)
         self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable |
         Qt.ItemIsDragEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable |
         Qt.ItemIsDropEnabled)
         self.setText(0, text)
         self.role = role
+        self.layerId = layerId
+        self.id = id
+
+        if index is None:
+            self.index = parent.index + 1
+        else:
+            self.index = index
+
         if (isChecked):
             self.setCheckState(0,2)
         else:
@@ -52,8 +70,8 @@ class LayerTreeWidget(QtGui.QTreeWidget):
     SHOGUN_TREE_LEAF = 'de.terrestris.appshogun.model.tree.LayerTreeLeaf'
     SHOGUN_TREE_FOLDER = 'de.terrestris.appshogun.model.tree.LayerTreeFolder'
 
-    def __init__(self, parent):
-        super(LayerTreeWidget, self).__init__(parent)
+    def __init__(self, parentWindow):
+        super(LayerTreeWidget, self).__init__(parentWindow)
         self.setHeaderHidden(True)
         self.setColumnCount(1)
         self.setDragEnabled(True)
@@ -65,14 +83,26 @@ class LayerTreeWidget(QtGui.QTreeWidget):
     def setupNewTree(self):
         folder = self.addNewFolder(None)
         folder.setText(0, 'Background layer')
-        LayerTreeItem(folder, 'OSM-WMS GRAY', self.SHOGUN_TREE_LEAF, True)
-        folder.setExpanded(True)
+        #LayerTreeItem(
+        #    folder, 'OSM-WMS GRAY', self.SHOGUN_TREE_LEAF, id = None,
+        #    isChecked = True, index = 1)
+        #folder.setExpanded(True)
 
 
     def populateTree(self, layerTree):
+        self.rootId = layerTree['id']
         children = layerTree['children']
         for child in children:
-            topitem = LayerTreeItem(self, child['text'], child['@class'], child['checked'])
+
+            if 'layer' in child.keys():
+                layerId = child['layer']['id']
+            else:
+                layerId = None
+
+            topitem = LayerTreeItem(
+            parent = self, text = child['text'], role = child['@class'],
+            id = child['id'], isChecked = child['checked'], index = 1, layerId = layerId)
+
             if 'children' in child.keys():
                 self.constructTreeChildrenRecursive(topitem, child['children'])
 
@@ -83,18 +113,29 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             iter += 1
             val = iter.value()
 
+
     def constructTreeChildrenRecursive(self, parent, children):
         for child in children:
-            item = LayerTreeItem(parent, child['text'], child['@class'], child['checked'])
+            if 'layer' in child.keys():
+                layerId = child['layer']['id']
+            else:
+                layerId = None
+            item = LayerTreeItem(
+                parent = parent, text = child['text'], role = child['@class'],
+                id = child['id'], isChecked = child['checked'], index = None,
+                layerId = layerId)
             if 'children' in child.keys():
                 self.constructChilldrenRecursive(item, child['children'])
+
 
     def dropEvent(self, e):
         dropItem = self.itemAt(e.pos())
         mime = e.mimeData()
         if dropItem is None:
             if mime.hasText():
-                LayerTreeItem(self, mime.text(), self.SHOGUN_TREE_LEAF, False)
+                LayerTreeItem(parent = self, text = mime.text(),
+                    role = self.SHOGUN_TREE_LEAF, id = None, isChecked = False,
+                    index = 1, layerId = mime.layerId)
             else:
                 self.changePositionInTree(self.invisibleRootItem())
         else:
@@ -108,7 +149,9 @@ class LayerTreeWidget(QtGui.QTreeWidget):
 
             # if mime has Text its coming from the layerlistwidget
             if mime.hasText():
-                LayerTreeItem(dropItem, mime.text(), self.SHOGUN_TREE_LEAF, False)
+                LayerTreeItem(parent = dropItem, text = mime.text(),
+                role = self.SHOGUN_TREE_LEAF, id = None, isChecked =  False,
+                index = None, layerId = mime.layerId )
             else:
                 self.changePositionInTree(dropItem)
         iter = QtGui.QTreeWidgetItemIterator(self)
@@ -168,6 +211,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
         point = self.mapToGlobal(point)
         menu.exec_(point)
 
+
     def addNewFolder(self, item):
         if item is None:
             parent = self
@@ -175,6 +219,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             parent = item
         new = LayerTreeItem(parent, 'New folder', self.SHOGUN_TREE_FOLDER, True)
         return new
+
 
     def deleteAll(self):
         topitem = self.invisibleRootItem()
@@ -194,6 +239,110 @@ class LayerTreeWidget(QtGui.QTreeWidget):
         parent.removeChild(item)
 
 
+    '''
+    def compareWithLayerTreeJson(self, oldLayerTree):
+        rootId = oldLayerTree['id']
+        oldChildren = oldLayerTree['children']
+
+        newChildren = [self.invisibleRootItem().child(x) for x in range(self.invisibleRootItem().childCount())]
+
+        changes = []
+
+        for x in len(oldChildren):
+            changes.append(self.compareTreeNode(oldChildren(x), newChildren(x), rootId)
+        print("ok")
+
+
+    def compareTreeNode(self, oldChild, newChild, oldParentId):
+        change = False
+        if oldParentId != newChild.parent().id :
+            change = {'parentId' : newChild.parent().id, 'id' : newChild.id }
+
+
+            return
+    '''
+
+    def getTreeHierarchyChanges(self, oldTreeHierarchy):
+        newTreeHierarchy = self.getCurrentTreeHierarchy()
+
+        oldHierarchyAsList = []
+        for x in oldTreeHierarchy['children']:
+            if x['children'] == []:
+                oldHierarchyAsList.append(x)
+            else:
+                oldHierarchyAsList.append(hierarchyToList(x))
+
+        changes = {
+            'newItems' : {},
+            'changeItems' : {},
+            'deleteItems' : {}
+            }
+        for item in newTreeHierarchy['children']:
+
+
+    def hierarchyToList(self, child):
+        if hierarchy['children'] == []:
+            return tuple(hierarchy.items()
+            )
+
+    def getCurrentTreeHierarchy(self):
+        rootItem = self.invisibleRootItem()
+        current = {
+            'id' : self.rootId,
+            'root' : True,
+            'children' : [self.findChildren(rootItem.child(x)) for x in range(rootItem.childCount()) ]
+            }
+        return current
+
+    def findChildren(self, item):
+        if item.checkState(0) == Qt.Checked:
+            isChecked = True
+        else:
+            isChecked = False
+
+        if item.role == self.SHOGUN_TREE_LEAF:
+            isExpandable = False
+            isLeaf = True
+        else:
+            isExpandable = True
+            isLeaf = False
+
+        if item.parent() is None:
+            parentId = self.rootId
+        else:
+            parentId = item.parent().id
+        entry = {
+            'id' : item.id,
+            '@class' : item.role,
+            'text' : item.text(0),
+            "leaf" : isLeaf,
+            "checked" : isChecked,
+            "parentId" : parentId,
+            "index" : item.index,
+            "expanded" :item.isExpanded(),
+            "root" : False,
+            "expandable" : isExpandable
+            'children' : [self.findChildren(item.child(x)) for x in range(item.childCount()]
+            }
+
+        return entry
+
+
+'''
+        iter = QTreeWidgetItemIterator(self)
+        item = iter.value()
+        while item:
+            entry = {'id' : item.id}
+            if entry.childCount() != 0:
+                entry['children'] = []
+            newiter = QTreeWidgetItemIterator(self)
+            newitem = newiter.value()
+            while newitem:
+                if newitem.id == item.parent().id:
+
+            iter += 1
+            item = iter.value()
+'''
 class ApplicationSettingsDialog(QtGui.QDialog):
     def  __init__(self):
         QtGui.QDialog.__init__(self)
@@ -214,8 +363,8 @@ class ApplicationSettingsDialog(QtGui.QDialog):
         tab0labels=[['Name',(50, 50, 56, 17)], ['Description', (50,100,70,25)], ['Language', (50, 150, 56, 17)]]
         tab1labels = [['Which tools/ buttons shall be activated in the application:', (50, 25, 56, 17)]]
         tab2labels = [['Center:', (50, 50, 70, 17)], ['X:', (160, 53, 10, 10)], ['Y:', (320, 53, 10, 10)], ['Zoom:', (50, 100, 70, 17)],
-                        ['Extent:', (50, 333, 70, 17)], ['MinX:', (132, 337, 40, 10)], ['MinY:', (222, 297, 40, 10)], ['MaxX:', (306, 337, 40, 10)],
-                        ['MaxY:', (222, 377, 40, 10)]]
+                        ['Extent:', (50, 363, 70, 17)], ['MinX:', (132, 367, 40, 17)], ['MinY:', (222, 327, 40, 17)], ['MaxX:', (306, 367, 40, 17)],
+                        ['MaxY:', (222, 407, 40, 17)]]
         tab3labels = [['All Layers', (90, 40, 80, 30)], ['Layer Tree', (325, 40, 80, 30)]]
         tab4labels = [['Users', (100, 10, 50, 20)], ['Groups', (320, 10, 50, 20)]]
         tabwidgets = [['General', tab0labels], ['Tools', tab1labels], ['Homeview', tab2labels], ['Layer', tab3labels], ['Permissions', tab4labels]]
@@ -234,7 +383,7 @@ class ApplicationSettingsDialog(QtGui.QDialog):
                 l.setText(label[0])
                 l.setGeometry(QRect(label[1][0],label[1][1],label[1][2],label[1][3]))
                 if (tab[0] == 'Layer'):
-                    font = QtGui.QFont('Arial',12)
+                    font = QFont('Arial',12)
                     font.setBold(True)
                     l.setFont(font)
 
@@ -298,20 +447,19 @@ class ApplicationSettingsDialog(QtGui.QDialog):
 
         self.extentEdits = []
         minX = QtGui.QLineEdit(self.tabs[2])
-        minX.setGeometry(175, 330, 120, 25)
-        #minX.setStyleSheet('QLineEdit { background-color : #8c8c8c; color : white; }')
+        minX.setGeometry(175, 360, 120, 25)
         self.extentEdits.append(minX)
 
         minY = QtGui.QLineEdit(self.tabs[2])
-        minY.setGeometry(265, 290, 120, 25)
+        minY.setGeometry(265, 320, 120, 25)
         self.extentEdits.append(minY)
 
         maxX = QtGui.QLineEdit(self.tabs[2])
-        maxX.setGeometry(350, 330, 120, 25)
+        maxX.setGeometry(350, 360, 120, 25)
         self.extentEdits.append(maxX)
 
         maxY = QtGui.QLineEdit(self.tabs[2])
-        maxY.setGeometry(265, 370, 120, 25)
+        maxY.setGeometry(265, 400, 120, 25)
         self.extentEdits.append(maxY)
 
         style = 'QLineEdit { background-color : #a6a6a6; color : white; }'
@@ -330,9 +478,9 @@ class ApplicationSettingsDialog(QtGui.QDialog):
         self.qgsExtentButton.setText('Set current QGIS view')
         self.moreObjects.append(self.qgsExtentButton)
 
-        self.homeviewEpsgInfo = QtGui.QLabel(self.tabs[2])
-        self.homeviewEpsgInfo.setGeometry(QRect(280, 5, 210, 17))
-        self.homeviewEpsgInfo.setText('epsgInfo')
+        self.homeviewEpsgWarning = QtGui.QLabel(self.tabs[2])
+        self.homeviewEpsgWarning.setGeometry(QRect(50, 220, 435, 80))
+        self.homeviewEpsgWarning.setFont(QFont('Arial', 9))
 
         self.jumpButtonOrig = QtGui.QPushButton(self.tabs[2])
         self.jumpButtonOrig.setGeometry(QRect(115, 192, 160, 20))
@@ -349,11 +497,9 @@ class ApplicationSettingsDialog(QtGui.QDialog):
 
         self.layerlistwidget = LayerListWidget(self.tabs[3])
         self.layerlistwidget.setGeometry(QRect(25, 70, 210, 350))
-        self.layerlistwidget.setEnabled(False)
 
         self.layertreewidget = LayerTreeWidget(self.tabs[3])
         self.layertreewidget.setGeometry(QRect(260, 70, 210, 350))
-        self.layertreewidget.setEnabled(False)
 
 
         #tab 4 = 'Permissions'
@@ -413,8 +559,8 @@ class ApplicationSettingsDialog(QtGui.QDialog):
             list.append(object)
         for box in self.tools.values():
             list.append(box)
-        #list.append(self.layerlistwidget)
-        #list.append(self.layertreewidget)
+        list.append(self.layerlistwidget)
+        list.append(self.layertreewidget)
         return list
 
 
@@ -451,11 +597,25 @@ class ApplicationSettingsDialog(QtGui.QDialog):
         self.groupstabel.setHidden(True)
         self.noPermissionAccessLabel = QtGui.QLabel(self.tabs[4])
         self.noPermissionAccessLabel.setGeometry(QRect(50, 50, 420, 50))
-        self.noPermissionAccessLabel.setText('Could not access application permissions. User permission is not high enough')
+        self.noPermissionAccessLabel.setText('Could not access application '
+            'permissions. User permission is not high enough')
 
     def newAppCreation(self):
         self.usertabel.setHidden(True)
         self.groupstabel.setHidden(True)
         self.noPermissionAccessLabel = QtGui.QLabel(self.tabs[4])
         self.noPermissionAccessLabel.setGeometry(QRect(50, 50, 420, 100))
-        self.noPermissionAccessLabel.setText('You have to save and upload the new application once\nfirst, then you can edit it\'s permissions')
+        self.noPermissionAccessLabel.setText('You have to save and upload the '
+            'new application once\nfirst, then you can edit it\'s permissions')
+
+    def showEpsgWarning(self, currentCrs, applicationCrs):
+        self.homeviewEpsgWarning.setHidden(False)
+        txt = 'Note: The coordinate reference system CRS of the current QGIS \n'
+        txt += 'project: ' + currentCrs +' is different from this application\'s'
+        txt += ' CRS: ' + applicationCrs + '\nIt is strongly recommended to '
+        txt += 'change the QGIS Project CRS\nto ' + applicationCrs + ' before '
+        txt += 'working with the homeview'
+        self.homeviewEpsgWarning.setText(txt)
+
+    def hideEpsgWarning(self):
+        self.homeviewEpsgWarning.setHidden(True)
