@@ -104,7 +104,7 @@ class Editor(QObject):
         elif actionName == 'View Application in web browser':
             action.triggered.connect(lambda: item.ressource.viewApplicationOnline(item.id))
         elif actionName == 'New Connection':
-            action.triggered.connect(lambda: self.showDialog(item))
+            action.triggered.connect(lambda: self.showDialog(self.connectdlg))
         elif actionName == 'Application Settings':
             action.triggered.connect(lambda: self.showDialog(item))
         elif actionName == 'Layer Settings':

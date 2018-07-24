@@ -379,8 +379,8 @@ class ApplicationItem(TreeItem):
             self.dlg.tools[tool['id']].setChecked(True)
 
         # populate the layer tree and the table of available layers
-        self.layerTree = settings['layerTree']
-        self.dlg.layertreewidget.populateTree(self.layerTree)
+        layerTree = settings['layerTree']
+        self.dlg.layertreewidget.populateTree(layerTree)
 
         allLayers = self.ressource.getLayerIdsAndNames()
         self.dlg.layerlistwidget.populateList(allLayers)
@@ -428,14 +428,18 @@ class ApplicationItem(TreeItem):
         allChanges = {}
         if self.getGeneralChanges() is not None:
             allChanges['general'] = self.getGeneralChanges()
+
         if self.getActiveToolsChanges() is not None:
             if not 'general' in allChanges:
                 allChanges['general'] = {}
             allChanges['general']['activeTools'] = self.getActiveToolsChanges()
+
         if self.getHomeViewChanges() is not None:
             allChanges['homeview'] = self.getHomeViewChanges()
 
-
+        layerTreeChanges = self.dlg.layertreewidget.getLayerTreeChanges()
+        if layerTreeChanges is not None:
+            allChanges['layerTree'] = layerTreeChanges
 
         userPermissionChanges = self.getPermissionChanges('User')
         if userPermissionChanges is not None:
@@ -446,7 +450,6 @@ class ApplicationItem(TreeItem):
                 allChanges['permissions'] = {}
             allChanges['permissions']['UserGroup'] = groupPermissionChanges
 
-        print(self.dlg.layertreewidget.getCurrentTreeHierarchy())
         return allChanges
 
 
@@ -497,21 +500,6 @@ class ApplicationItem(TreeItem):
             'center':{'x':x, 'y':y} }
         return newhomeview
 
-    '''
-    def getLayerTreeChanges(self):
-        currentLayerTreeHierarchy = self.dlg.layertreewidget.getCurrentTreeHierarchy()
-        oldHierarchy = {'children' : [self.getOldLayerTreeHierarchy(child) for child in self.layerTree['children']]}
-        if currentLayerTreeHierarchy == oldHierarchy:
-            return None
-        else:
-
-
-    def getOldLayerTreeHierarchy(self, data):
-        if not 'children' in data.keys():
-            return {'id' : data['id']}
-        else:
-            return {'id' : data['id'], 'children' : [self.getOldLayerTreeHierarchy(child) for child in item[children]]}
-    '''
 
     def getPermissionChanges(self, type):
         if type == 'User':
@@ -572,6 +560,7 @@ class ApplicationItem(TreeItem):
 
     def stopEditing(self):
         changes = self.getAllChanges()
+        print(changes)
         if len(changes) > 0:
             warn = QMessageBox.warning(self.dlg, 'Warning','All changes will be'
                 ' lost. Continue?', QMessageBox.Cancel, QMessageBox.Ok)
@@ -601,11 +590,6 @@ class ApplicationItem(TreeItem):
                         self.name = changes['general']['name']
                         self.setText(0, self.name)
 
-                    #update the class internal copy of the general settings
-                    newSettings = self.ressource.updateSingleApplication(self.id)
-                    for attr in self.settings:
-                        self.settings[attr] = newSettings[attr]
-
                 if 'homeview' in changes:
                     self.ressource.editMapConfig(
                         self.mapConfigId, changes['homeview'])
@@ -614,6 +598,28 @@ class ApplicationItem(TreeItem):
                     self.ressource.updateExtentsAndMapConfigs()
                     self.homeview = self.ressource.getHomeviewByIds(
                             self.mapConfigId, self.extentId)
+
+                if 'layerTree' in changes:
+                    deletedItemIds = changes['layerTree']['deleteItems']
+                    responses = []
+                    if len(deletedItemIds) > 0:
+                        for id in deletedItemIds:
+                            responses.append(self.ressource.deleteLayerTreeItem(id))
+                    newItems = changes['layerTree']['newItems']
+                    if len(newItems) > 0:
+                        for item in newItems:
+                            responses.append(self.ressource.createLayerTreeItem(item))
+                    changeItems = changes['layerTree']['changeItems']
+                    if len(changeItems) > 0:
+                        for item in changeItems:
+                            id = item['id']
+                            responses.append(
+                                self.ressource.updateLayerTreeItem(id, item))
+                    res = 200
+                    for x in responses:
+                        if not 199 < x < 210:
+                            res = x
+                    self.ressource.userInfo(res, 'Layertree', 'updated')
 
                 if 'permissions' in changes:
                     responses = 200
@@ -631,6 +637,11 @@ class ApplicationItem(TreeItem):
                     self.ressource.userInfo(responses,
                         'Application permissions', 'updated')
 
+                #update the class internal copy of the general settings
+                newSettings = self.ressource.updateSingleApplication(self.id)
+                for attr in self.settings:
+                    self.settings[attr] = newSettings[attr]
+                self.dlg.layertreewidget.populateTree(newSettings['layerTree'])
             # if the user clicked 'cancel', just return and stay in edit mode:
             else:
                 return

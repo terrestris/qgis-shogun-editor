@@ -43,29 +43,84 @@ class LayerListWidget(QtGui.QListWidget):
     def dragEnterEvent(self, e):
         item = self.itemAt(e.pos())
         if item is not None:
-            e.mimeData().setText(item.text())
+            # we need to pass the name of the layer and it's id to the mimeData
+            # for drag and drop. For reasons of simplicity we just add the
+            # layerId and name to one string which we pass and decode it later
+            # we use '&;*&' so this code must not appear in layer names
+            mimeText = item.text() + '&;*&' + str(item.layerId)
+            e.mimeData().setText(mimeText)
 
 
 class LayerTreeItem(QtGui.QTreeWidgetItem):
-    def __init__(self, parent, text, role, id, isChecked, index = None, layerId = None):
+    def __init__(self, parent):
         super(LayerTreeItem, self).__init__(parent)
         self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable |
         Qt.ItemIsDragEnabled | Qt.ItemIsSelectable | Qt.ItemIsUserCheckable |
         Qt.ItemIsDropEnabled)
-        self.setText(0, text)
-        self.role = role
-        self.layerId = layerId
-        self.id = id
+        self.savedAttributes = {}
+        self.newAttributes = {}
+        self.layerId = None
+        self.id = None
 
-        if index is None:
-            self.index = parent.index + 1
-        else:
-            self.index = index
 
-        if (isChecked):
-            self.setCheckState(0,2)
+    def setSavedAttributes(self, savedAttributes):
+        self.savedAttributes = savedAttributes
+        self.setText(0, self.savedAttributes['text'])
+        self.role = self.savedAttributes['@class']
+        self.id = self.savedAttributes['id']
+        if self.savedAttributes['root']:
+            return
+        if self.savedAttributes['checked'] == True :
+            self.setCheckState(0,Qt.Checked)
         else:
-            self.setCheckState(0,0)
+            self.setCheckState(0,Qt.Unchecked)
+
+
+    def updateNewAttributes(self):
+        self.newAttributes['text'] = self.text(0)
+        self.newAttributes['root'] = False
+        self.newAttributes['@class'] = self.role
+
+        if self.checkState(0) == Qt.Checked:
+            self.newAttributes['checked'] = True
+        else:
+            self.newAttributes['checked'] = False
+
+        if self.parent() is None:
+            self.newAttributes['parentId'] = self.treeWidget().rootId
+            self.newAttributes['index'] = self.treeWidget().indexOfTopLevelItem(self)
+        else:
+            self.newAttributes['parentId'] = self.parent().id
+            self.newAttributes['index'] = self.parent().indexOfChild(self)
+
+        if self.role == 'de.terrestris.appshogun.model.tree.LayerTreeLeaf':
+            self.newAttributes['expandable'] = False
+            self.newAttributes['expanded'] = False
+            self.newAttributes['leaf'] = True
+        else:
+            self.newAttributes['expandable'] = True
+            self.newAttributes['expanded'] = True
+            self.newAttributes['leaf'] = False
+
+        if self.layerId is not None:
+            self.newAttributes['layer'] = self.layerId
+        #self.newAttributes['expanded'] = self.isExpanded()
+
+
+    def getItemChange(self):
+        if len(self.savedAttributes) == 0:
+            return self.newAttributes
+        else:
+            change = {}
+            for (key, value) in self.savedAttributes.items():
+                if key in self.newAttributes:
+                    if value != self.newAttributes[key]:
+                        change[key] = self.newAttributes[key]
+            if len(change) == 0:
+                return None
+            else:
+                change['id'] = self.id
+                return change
 
 
 class LayerTreeWidget(QtGui.QTreeWidget):
@@ -81,32 +136,19 @@ class LayerTreeWidget(QtGui.QTreeWidget):
         self.setDragDropMode(QtGui.QAbstractItemView.DragDrop)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.on_context_menu)
+        self.deletedItemIds = []
 
     def setupNewTree(self):
         folder = self.addNewFolder(None)
         folder.setText(0, 'Background layer')
-        #LayerTreeItem(
-        #    folder, 'OSM-WMS GRAY', self.SHOGUN_TREE_LEAF, id = None,
-        #    isChecked = True, index = 1)
-        #folder.setExpanded(True)
 
 
     def populateTree(self, layerTree):
+        # delete all items, then populate the tree with items representing
+        # the layer tree structure
+        self.clear()
         self.rootId = layerTree['id']
-        children = layerTree['children']
-        for child in children:
-
-            if 'layer' in child.keys():
-                layerId = child['layer']['id']
-            else:
-                layerId = None
-
-            topitem = LayerTreeItem(
-            parent = self, text = child['text'], role = child['@class'],
-            id = child['id'], isChecked = child['checked'], index = 1, layerId = layerId)
-
-            if 'children' in child.keys():
-                self.constructTreeChildrenRecursive(topitem, child['children'])
+        self.constructTreeChildrenRecursive(self.invisibleRootItem(), layerTree['children'])
 
         iter = QtGui.QTreeWidgetItemIterator(self)
         val = iter.value()
@@ -115,19 +157,50 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             iter += 1
             val = iter.value()
 
-
     def constructTreeChildrenRecursive(self, parent, children):
         for child in children:
-            if 'layer' in child.keys():
-                layerId = child['layer']['id']
-            else:
-                layerId = None
-            item = LayerTreeItem(
-                parent = parent, text = child['text'], role = child['@class'],
-                id = child['id'], isChecked = child['checked'], index = None,
-                layerId = layerId)
+            item = LayerTreeItem(parent)
+            attrs = {key : value for (key, value) in child.items() if key != 'children'}
+            item.setSavedAttributes(attrs)
             if 'children' in child.keys():
-                self.constructChilldrenRecursive(item, child['children'])
+                if not child['children']:
+                    return
+                # 'children' is a list, to make sure the items are put into the
+                # tree in the right order according to there index, we sort them
+                sortedChildren = sorted(child['children'], key = lambda x : x['index'])
+                self.constructTreeChildrenRecursive(item, sortedChildren)
+
+
+    def getLayerTreeChanges(self):
+        allChanges = {
+            'newItems' : [],
+            'changeItems' : [],
+            'deleteItems' : []
+            }
+        # iterate through all items in the layertree and find new or
+        # changed items
+        iter = QtGui.QTreeWidgetItemIterator(self)
+        treeitem = iter.value()
+        while treeitem:
+            treeitem.updateNewAttributes()
+            change = treeitem.getItemChange()
+            if change is not None:
+                if not 'id' in change:
+                    allChanges['newItems'].append(change)
+                else:
+                    allChanges['changeItems'].append(change)
+
+            iter += 1
+            treeitem = iter.value()
+
+        if len(self.deletedItemIds) > 0:
+            allChanges['deleteItems'] = [x for x in self.deletedItemIds]
+            self.deletedItemIds = []
+
+        for x in allChanges:
+            if len(allChanges[x]) > 0:
+                return allChanges
+        return None
 
 
     def dropEvent(self, e):
@@ -135,9 +208,11 @@ class LayerTreeWidget(QtGui.QTreeWidget):
         mime = e.mimeData()
         if dropItem is None:
             if mime.hasText():
-                LayerTreeItem(parent = self, text = mime.text(),
-                    role = self.SHOGUN_TREE_LEAF, id = None, isChecked = False,
-                    index = 1, layerId = mime.layerId)
+                newItem = LayerTreeItem(parent = self)
+                layerName, layerId = mime.text().split('&;*&')
+                newItem.setText(0, layerName)
+                newItem.role = self.SHOGUN_TREE_LEAF
+                newItem.layerId = int(layerId)
             else:
                 self.changePositionInTree(self.invisibleRootItem())
         else:
@@ -151,9 +226,11 @@ class LayerTreeWidget(QtGui.QTreeWidget):
 
             # if mime has Text its coming from the layerlistwidget
             if mime.hasText():
-                LayerTreeItem(parent = dropItem, text = mime.text(),
-                role = self.SHOGUN_TREE_LEAF, id = None, isChecked =  False,
-                index = None, layerId = mime.layerId )
+                newItem = LayerTreeItem(parent = dropItem)
+                layerName, layerId = mime.text().split('&;*&')
+                newItem.setText(0, layerName)
+                newItem.role = self.SHOGUN_TREE_LEAF
+                newItem.layerId = int(layerId)
             else:
                 self.changePositionInTree(dropItem)
         iter = QtGui.QTreeWidgetItemIterator(self)
@@ -190,7 +267,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             a1 = QtGui.QAction('Add Folder (top level)', None)
             a1.triggered.connect(lambda: self.addNewFolder(None))
             acts.append(a1)
-            a2 = QtGui.QAction('Delete Tree Contetns completely', None)
+            a2 = QtGui.QAction('Delete Tree Contents completely', None)
             a2.triggered.connect(self.deleteAll)
             acts.append(a2)
         else:
@@ -219,9 +296,11 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             parent = self
         else:
             parent = item
-        new = LayerTreeItem(parent, 'New folder', self.SHOGUN_TREE_FOLDER, True)
+        new = LayerTreeItem(parent)
+        new.setText(0, 'New folder')
+        new.role = self.SHOGUN_TREE_FOLDER
+        new.setCheckState(0, Qt.Checked)
         return new
-
 
     def deleteAll(self):
         topitem = self.invisibleRootItem()
@@ -230,121 +309,34 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             topitem.removeChild(child)
 
     def renameItem(self, item):
-        text, ok = QtGui.QInputDialog.getText(self, 'Text Input Dialog', 'Enter the new name:')
+        text, ok = QtGui.QInputDialog.getText(self,
+            'Text Input Dialog', 'Enter the new name:')
         if ok:
             item.setText(0, text)
 
+    def getSubtreeIds(self, item):
+        # as there is no option in QT to iterate only a subtree, we had to write
+        # a recursive iteration by ourselves to get all id's that are about to
+        # be deleted
+        idList = []
+        if item.id is not None:
+            idList.append(item.id)
+        if item.childCount() > 0:
+            for x in range(item.childCount()):
+                idList.extend(getSubtreeIds(item.child(x)))
+        return idList
+
+
     def deleteLeaf(self, item):
+        self.deletedItemIds.extend(self.getSubtreeIds(item))
+
         parent = item.parent()
         if parent is None:
             parent = self.invisibleRootItem()
         parent.removeChild(item)
 
 
-    '''
-    def compareWithLayerTreeJson(self, oldLayerTree):
-        rootId = oldLayerTree['id']
-        oldChildren = oldLayerTree['children']
 
-        newChildren = [self.invisibleRootItem().child(x) for x in range(self.invisibleRootItem().childCount())]
-
-        changes = []
-
-        for x in len(oldChildren):
-            changes.append(self.compareTreeNode(oldChildren(x), newChildren(x), rootId)
-        print("ok")
-
-
-    def compareTreeNode(self, oldChild, newChild, oldParentId):
-        change = False
-        if oldParentId != newChild.parent().id :
-            change = {'parentId' : newChild.parent().id, 'id' : newChild.id }
-
-
-            return
-    '''
-
-    def getTreeHierarchyChanges(self, oldTreeHierarchy):
-        newTreeHierarchy = self.getCurrentTreeHierarchy()
-
-        oldHierarchyAsList = []
-        for x in oldTreeHierarchy['children']:
-            if x['children'] == []:
-                oldHierarchyAsList.append(x)
-            else:
-                oldHierarchyAsList.append(hierarchyToList(x))
-
-        changes = {
-            'newItems' : {},
-            'changeItems' : {},
-            'deleteItems' : {}
-            }
-        #for item in newTreeHierarchy['children']:
-
-
-    def hierarchyToList(self, child):
-        if hierarchy['children'] == []:
-            return tuple(hierarchy.items()
-            )
-
-    def getCurrentTreeHierarchy(self):
-        rootItem = self.invisibleRootItem()
-        current = {
-            'id' : self.rootId,
-            'root' : True,
-            'children' : [self.findChildren(rootItem.child(x)) for x in range(rootItem.childCount()) ]
-            }
-        return current
-
-    def findChildren(self, item):
-        if item.checkState(0) == Qt.Checked:
-            isChecked = True
-        else:
-            isChecked = False
-
-        if item.role == self.SHOGUN_TREE_LEAF:
-            isExpandable = False
-            isLeaf = True
-        else:
-            isExpandable = True
-            isLeaf = False
-
-        if item.parent() is None:
-            parentId = self.rootId
-        else:
-            parentId = item.parent().id
-        entry = {
-            'id' : item.id,
-            '@class' : item.role,
-            'text' : item.text(0),
-            "leaf" : isLeaf,
-            "checked" : isChecked,
-            "parentId" : parentId,
-            "index" : item.index,
-            "expanded" :item.isExpanded(),
-            "root" : False,
-            "expandable" : isExpandable
-            'children' : [self.findChildren(item.child(x)) for x in range(item.childCount()]
-            }
-
-        return entry
-
-
-'''
-        iter = QTreeWidgetItemIterator(self)
-        item = iter.value()
-        while item:
-            entry = {'id' : item.id}
-            if entry.childCount() != 0:
-                entry['children'] = []
-            newiter = QTreeWidgetItemIterator(self)
-            newitem = newiter.value()
-            while newitem:
-                if newitem.id == item.parent().id:
-
-            iter += 1
-            item = iter.value()
-'''
 class ApplicationSettingsDialog(QtGui.QDialog):
     def  __init__(self):
         QtGui.QDialog.__init__(self)
@@ -375,8 +367,6 @@ class ApplicationSettingsDialog(QtGui.QDialog):
         for tab in tabwidgets:
             t = QtGui.QWidget()
             t.setObjectName(tab[0])
-            #self.tabedits.append([])
-            #self.tabboxes.append([])
             self.tabs.append(t)
             self.tabWidget.addTab(t, tab[0])
 
@@ -394,7 +384,6 @@ class ApplicationSettingsDialog(QtGui.QDialog):
 
         #then populate the specific tabwidgets with other QObjects:
         #tab 0 = 'General':
-
         self.nameEdit = QtGui.QLineEdit(self.tabs[0])
         self.nameEdit.setGeometry(QRect(250, 40, 150, 27))
         self.tabedits.append(self.nameEdit)
@@ -424,7 +413,9 @@ class ApplicationSettingsDialog(QtGui.QDialog):
                 'Step forward to next extent button', 'Activate hover-select tool', 'Print button', 'Show measure tools button',
                 'Show redlining tools button', 'Show workstate tools button', 'Show addwms tools button', 'Show meta toolbar button']
         y = 50
-        self.tools = {}     #a dictonary with toolbutton id as key and reference to the QCheckBox as value, i.e.: {58: -Reference to QCheckBox Object-}
+        self.tools = {}
+        # a dictonary with toolbutton id as key and reference to the QCheckBox
+        # as value, i.e.: {58: -Reference to QCheckBox Object-}
         tcount = 57
         for tool in toollist:
             t = QtGui.QCheckBox(self.tabs[1])

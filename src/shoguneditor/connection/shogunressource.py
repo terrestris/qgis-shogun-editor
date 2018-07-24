@@ -499,15 +499,29 @@ class ShogunRessource:
 
     def createLayerTreeItem(self, data):
         url = self.baseurl + 'rest/layertree'
-        header = {'Content-type':'application/json'}
+        h = {'Content-type':'application/json'}
         body = json.dumps(data)
-        response = self.http.request(url, method = 'POST', body = data, headers = h)
+        print(body)
+        response = self.http.request(url, method = 'POST', body = body, headers = h)
+        print(response)
         return response[0]['status']
 
 
     def updateLayerTreeItem(self, layerTreeItemId, data):
         url = self.baseurl + 'rest/layertree/' + str(layerTreeItemId)
-        header = {'Content-type':'application/json'}
+        h = {'Content-type':'application/json'}
         body = json.dumps(data)
-        response = self.http.request(url, method = 'Put', body = data, headers = h)
+        print(body)
+        response = self.http.request(url, method = 'PUT', body = body, headers = h)
+        print(response)
+        return response[0]['status']
+
+
+    def deleteLayerTreeItem(self, layerTreeItemIdd):
+        url = self.baseurl + 'rest/layertree/' + str(layerTreeItemIdd)
+        h = {'Content-type':'application/json'}
+        body = json.dumps({'id' : layerTreeItemIdd})
+        print(body)
+        response = self.http.request(url, method = 'DELETE', body = body, headers = h)
+        print(response)
         return response[0]['status']
