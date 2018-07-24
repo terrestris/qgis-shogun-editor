@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
 + the last method "getLabelingAsSld()" was taken
 + from the qgis geoserver explorer plugin by
 + (C) 2016 Boundless, http://boundlessgeo.com
@@ -8,9 +8,12 @@
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 import sys
+import os.path
+import zipfile
+import tempfile
 
 if sys.version_info[0] >= 3:
     from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QLabel, QPushButton
@@ -26,9 +29,6 @@ else:
 
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
 from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
-import os.path
-import zipfile
-import tempfile
 
 from shoguneditor.gui.dialog_bases.addraster import AddRasterDialog
 

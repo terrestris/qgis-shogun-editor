@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 import sys
 
 if sys.version_info[0] >= 3:
     from qgis.PyQt.QtCore import QRect, Qt
     from qgis.PyQt.QtGui import QDoubleValidator
-    # we are faking the old way of QtGui, not the best style...
+    # we are faking the old way of QtGui, not the best style, but makes it easier
+    # for switching betweeng version 2 and 3
     from qgis.PyQt import QtWidgets as QtGui
 else:
     from PyQt4.QtCore import QRect, Qt

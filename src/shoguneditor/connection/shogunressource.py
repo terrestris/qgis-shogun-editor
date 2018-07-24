@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 '''
-(c) 2018 Terrestris GmbH & CO. KG, https://www.terrestris.de/en/
+(c) 2018 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
  This code is licensed under the GPL 2.0 license.
 '''
 
 __author__ = 'Jonas Grieb'
-__date__ = 'Juli 2018'
+__date__ = 'July 2018'
 
 import sys
+from base64 import b64encode
+import urllib
+import json
+import os
+import webbrowser
 
 if sys.version_info[0] >= 3:
     from qgis.PyQt.QtGui import QIcon
@@ -22,11 +27,6 @@ else:
 
 from qgis.core import QgsApplication
 from qgis.gui import QgsMessageBar
-from base64 import b64encode
-import urllib
-import json
-import os
-import webbrowser
 
 from .networkaccessmanager import NetworkAccessManager, RequestsExceptionConnectionError, RequestsException
 from shoguneditor.layerutils import createAndParseSld
