@@ -7,18 +7,32 @@
 __author__ = 'Jonas Grieb'
 __date__ = 'July 2018'
 
-from PyQt4.QtGui import QLabel, QLineEdit, QFont, QLabel, QMessageBox, QTreeWidgetItem, QIcon
-from PyQt4.QtCore import QRect, Qt
-from qgis.core import QgsMapLayerRegistry, QgsMapLayer, QgsProject, QgsLayerItem
-from qgis.core import QgsRectangle, QgsPoint, QGis
+import sys
 
-import shoguneditor.resources
-from dialog_bases.applicationSettings import ApplicationSettingsDialog
-from dialog_bases.layerSettings import LayerSettingsDialog, UploadLayerDialog
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtWidgets import QLabel, QLineEdit, QLabel, QMessageBox, QTreeWidgetItem
+    from qgis.PyQt.QtGui import QFont, QIcon
+    from qgis.PyQt.QtCore import QRect, Qt
+    from qgis.core import QgsPointXY, QgsProject, QgsWkbTypes
+    import shoguneditor.resources3
+else:
+    from PyQt4.QtGui import QLabel, QLineEdit, QFont, QLabel, QMessageBox, QTreeWidgetItem, QIcon
+    from PyQt4.QtCore import QRect, Qt
+    from qgis.core import QgsPoint, QgsMapLayerRegistry, QGis
+    import shoguneditor.resources2
+
+from qgis.core import QgsMapLayer, QgsProject, QgsLayerItem
+from qgis.core import QgsRectangle
+
 from shoguneditor.layerutils import prepareLayerForUpload, createLayer
+from .dialog_bases.applicationSettings import ApplicationSettingsDialog
+from .dialog_bases.layerSettings import LayerSettingsDialog, UploadLayerDialog
 
-'''This file contains all classes used in the QTreeWidget in the Editor class
-representating the structure of the connected shogun2-webapp ressource'''
+
+PYTHON_VERSION = sys.version_info[0]
+
+'''This file contains all classes used in the QTreeWidget representating the
+structure of the connected shogun2-webapp ressource'''
 
 ## TODO: the classes LayerItem and ApplicationItem could be merged or inherit
 # from a common abstract class, the same is LayerSettingsDialog and
@@ -67,10 +81,16 @@ class EditorItem(TreeItem):
     def disconnectSignals(self):
         if self.layersitem is not None:
             for layer in self.layersitem.layerlist:
-                try:
-                    QgsMapLayerRegistry.instance().layerRemoved.disconnect(layer.updateLayerList)
-                except:
-                    pass
+                if PYTHON_VERSION >= 3:
+                    try:
+                        QgsProject.instance().layerRemoved.disconnect(layer.updateLayerList)
+                    except:
+                        pass
+                else:
+                    try:
+                        QgsMapLayerRegistry.instance().layerRemoved.disconnect(layer.updateLayerList)
+                    except:
+                        pass
 
     def update(self):
         for x in [self.applicationsitem, self.layersitem]:
@@ -165,8 +185,6 @@ class ApplicationsItem(TreeItem):
             'projection' : 'EPSG:3857',
             'center' : {'x' : newhomeview['center']['x'], 'y' : newhomeview['center']['y']},
             'zoom' : newhomeview['zoom'],
-            ## TODO:  When the layerTree bug is fixed, replace this and make it
-            # dynamically!:
             'layerTree': 4535
             }
 
@@ -222,14 +240,16 @@ class ApplicationItem(TreeItem):
         self.dlg.editCheckBox.clicked.connect(self.startEditing)
         self.dlg.pushButtonCancel.clicked.connect(self.stopEditing)
 
-        self.dlg.origExtentButton.clicked.connect(self.setOriginalExtent)
-        self.dlg.qgsExtentButton.clicked.connect(lambda: self.setQgsExtent(iface))
-        self.dlg.jumpButtonOrig.clicked.connect(lambda: self.zoomToOrigExtent(iface))
+        self.iface = iface
 
-        self.dlg.homeviewZoomBox.valueChanged.connect(lambda: self.zoomToNewExtent(iface))
-        self.dlg.homeviewCenterEditX.textEdited.connect(lambda: self.zoomToNewExtent(iface))
-        self.dlg.homeviewCenterEditY.textEdited.connect(lambda: self.zoomToNewExtent(iface))
-        self.dlg.jumpButtonNew.clicked.connect(lambda: self.zoomToNewExtent(iface))
+        self.dlg.origExtentButton.clicked.connect(self.setOriginalExtent)
+        self.dlg.qgsExtentButton.clicked.connect(lambda: self.setQgsExtent())
+        self.dlg.jumpButtonOrig.clicked.connect(lambda: self.zoomToOrigExtent())
+
+        self.dlg.homeviewZoomBox.valueChanged.connect(lambda: self.zoomToNewExtent())
+        self.dlg.homeviewCenterEditX.textEdited.connect(lambda: self.zoomToNewExtent())
+        self.dlg.homeviewCenterEditY.textEdited.connect(lambda: self.zoomToNewExtent())
+        self.dlg.jumpButtonNew.clicked.connect(lambda: self.zoomToNewExtent())
 
 
     def setOriginalExtent(self):
@@ -256,17 +276,17 @@ class ApplicationItem(TreeItem):
         self.dlg.extentEdits[3].setText(str(extent.yMinimum()))
 
 
-    def setQgsExtent(self, iface):
-        rect = iface.mapCanvas().extent()
+    def setQgsExtent(self):
+        rect = self.iface.mapCanvas().extent()
         self.populateExtentEdits(rect)
-        center = iface.mapCanvas().center()
+        center = self.iface.mapCanvas().center()
         self.dlg.homeviewCenterEditX.setText(str(center.x()))
         self.dlg.homeviewCenterEditY.setText(str(center.y()))
 
-        zoom = iface.mapCanvas().mapUnitsPerPixel()
+        zoom = self.iface.mapCanvas().mapUnitsPerPixel()
         #get shogun resolutions as enumerated list
-        resolutions = enumerate(self.homeview['mapconfig']['resolutions'])
-        cursor = resolutions.next()
+        resolutions = list(enumerate(self.homeview['mapconfig']['resolutions']))
+        cursor = resolutions[0]
         for res in resolutions:
             if abs(zoom - res[1]) < abs(zoom - cursor[1]):
                 cursor = res
@@ -275,36 +295,44 @@ class ApplicationItem(TreeItem):
         self.dlg.homeviewZoomBox.setValue(cursor[0])
 
 
-    def zoomToOrigExtent(self,iface):
+    def zoomToOrigExtent(self):
         #first set the original homeview center as the new canvas center
         center = self.homeview['mapconfig']['center']
-        iface.mapCanvas().setCenter(QgsPoint(center['x'],center['y']))
+        if PYTHON_VERSION >= 3:
+            point = QgsPointXY(center['x'],center['y'])
+        else:
+            point = QgsPoint(center['x'],center['y'])
+        self.iface.mapCanvas().setCenter(point)
 
         zoomlvl = self.homeview['mapconfig']['zoom']
         zoom = self.homeview['mapconfig']['resolutions'][zoomlvl]
 
-        currentResolution = iface.mapCanvas().mapUnitsPerPixel()
+        currentResolution = self.iface.mapCanvas().mapUnitsPerPixel()
         if currentResolution != zoom:
             diff = zoom/currentResolution
-            iface.mapCanvas().zoomByFactor(diff)
+            self.iface.mapCanvas().zoomByFactor(diff)
 
-        iface.mapCanvas().refresh()
+        self.iface.mapCanvas().refresh()
 
 
-    def zoomToNewExtent(self, iface):
+    def zoomToNewExtent(self):
         x = float(self.dlg.homeviewCenterEditX.text())
         y = float(self.dlg.homeviewCenterEditY.text())
-        iface.mapCanvas().setCenter(QgsPoint(x,y))
+        if PYTHON_VERSION >= 3:
+            point = QgsPointXY(x, y)
+        else:
+            point = QgsPoint(x, y)
+        self.iface.mapCanvas().setCenter(point)
 
         zoomlvl = self.dlg.homeviewZoomBox.value()
         zoom = self.homeview['mapconfig']['resolutions'][zoomlvl]
 
-        currentResolution = iface.mapCanvas().mapUnitsPerPixel()
+        currentResolution = self.iface.mapCanvas().mapUnitsPerPixel()
         if currentResolution != zoom:
             diff = zoom/currentResolution
-            iface.mapCanvas().zoomByFactor(diff)
+            self.iface.mapCanvas().zoomByFactor(diff)
 
-        iface.mapCanvas().refresh()
+        self.iface.mapCanvas().refresh()
 
 
 
@@ -330,12 +358,20 @@ class ApplicationItem(TreeItem):
         self.homeview = self.ressource.getHomeviewByIds(self.mapConfigId, self.extentId)
 
         self.dlg.homeviewZoomBox.setMaximum(len(self.homeview['mapconfig']['resolutions'])-1)
-        origExtent = self.homeview['extent']['lowerLeft'].values()+self.homeview['extent']['upperRight'].values()
+        origExtent = list(self.homeview['extent']['lowerLeft'].values())+list(self.homeview['extent']['upperRight'].values())
         self.origExtRect = QgsRectangle(origExtent[0],origExtent[1],origExtent[2],origExtent[3])
         self.setOriginalExtent()
 
-        self.epsg = int(self.homeview['mapconfig']['projection'].strip('EPSG:'))
-        self.dlg.homeviewEpsgInfo.setText('Application projection: EPSG: '+str(self.epsg))
+        self.epsg = self.homeview['mapconfig']['projection']
+        if PYTHON_VERSION >= 3:
+            currentQgsCrs = QgsProject.instance().crs().authid()
+        else:
+            currentQgsCrs = self.iface.mapCanvas().mapRenderer().destinationCrs().authid()
+
+        if self.epsg != currentQgsCrs:
+            self.dlg.showEpsgWarning(currentQgsCrs, self.epsg)
+        else:
+            self.dlg.hideEpsgWarning()
 
         # set the application tools
         self.activeTools = [{'id' : tool['id']} for tool in settings['activeTools']]
@@ -392,12 +428,18 @@ class ApplicationItem(TreeItem):
         allChanges = {}
         if self.getGeneralChanges() is not None:
             allChanges['general'] = self.getGeneralChanges()
+
         if self.getActiveToolsChanges() is not None:
             if not 'general' in allChanges:
                 allChanges['general'] = {}
             allChanges['general']['activeTools'] = self.getActiveToolsChanges()
+
         if self.getHomeViewChanges() is not None:
             allChanges['homeview'] = self.getHomeViewChanges()
+
+        layerTreeChanges = self.dlg.layertreewidget.getLayerTreeChanges()
+        if layerTreeChanges is not None:
+            allChanges['layerTree'] = layerTreeChanges
 
         userPermissionChanges = self.getPermissionChanges('User')
         if userPermissionChanges is not None:
@@ -407,6 +449,7 @@ class ApplicationItem(TreeItem):
             if not 'permissions' in allChanges:
                 allChanges['permissions'] = {}
             allChanges['permissions']['UserGroup'] = groupPermissionChanges
+
         return allChanges
 
 
@@ -506,12 +549,14 @@ class ApplicationItem(TreeItem):
             newPermissionList = None
         return newPermissionList
 
+
     def startEditing(self):
         self.dlg.setEditState(True)
         self.dlg.editCheckBox.clicked.disconnect(self.startEditing)
         self.dlg.pushButtonOk.clicked.disconnect(self.dlg.hide)
         self.dlg.editCheckBox.clicked.connect(self.stopEditing)
         self.dlg.pushButtonOk.clicked.connect(self.saveChanges)
+
 
     def stopEditing(self):
         changes = self.getAllChanges()
@@ -521,13 +566,14 @@ class ApplicationItem(TreeItem):
             if warn == QMessageBox.Ok:
                 self.populateSettings()
             else:
+                self.dlg.editCheckBox.setChecked(True)
                 return
         self.stoppedEditing()
+
 
     def saveChanges(self):
         changes = self.getAllChanges()
         if len(changes) > 0:
-            print(changes)
             conf = QMessageBox.warning(self.dlg, 'Confirm', 'Please confirm you'
                 ' want to save the changes', QMessageBox.Cancel, QMessageBox.Ok)
             if conf == QMessageBox.Ok:
@@ -542,11 +588,6 @@ class ApplicationItem(TreeItem):
                         self.name = changes['general']['name']
                         self.setText(0, self.name)
 
-                    #update the class internal copy of the general settings
-                    newSettings = self.ressource.updateSingleApplication(self.id)
-                    for attr in self.settings:
-                        self.settings[attr] = newSettings[attr]
-
                 if 'homeview' in changes:
                     self.ressource.editMapConfig(
                         self.mapConfigId, changes['homeview'])
@@ -555,6 +596,28 @@ class ApplicationItem(TreeItem):
                     self.ressource.updateExtentsAndMapConfigs()
                     self.homeview = self.ressource.getHomeviewByIds(
                             self.mapConfigId, self.extentId)
+
+                if 'layerTree' in changes:
+                    deletedItemIds = changes['layerTree']['deleteItems']
+                    responses = []
+                    if len(deletedItemIds) > 0:
+                        for id in deletedItemIds:
+                            responses.append(self.ressource.deleteLayerTreeItem(id))
+                    newItems = changes['layerTree']['newItems']
+                    if len(newItems) > 0:
+                        for item in newItems:
+                            responses.append(self.ressource.createLayerTreeItem(item))
+                    changeItems = changes['layerTree']['changeItems']
+                    if len(changeItems) > 0:
+                        for item in changeItems:
+                            id = item['id']
+                            responses.append(
+                                self.ressource.updateLayerTreeItem(id, item))
+                    res = 200
+                    for x in responses:
+                        if not 199 < x < 210:
+                            res = x
+                    self.ressource.userInfo(res, 'Layertree', 'updated')
 
                 if 'permissions' in changes:
                     responses = 200
@@ -572,6 +635,11 @@ class ApplicationItem(TreeItem):
                     self.ressource.userInfo(responses,
                         'Application permissions', 'updated')
 
+                #update the class internal copy of the general settings
+                newSettings = self.ressource.updateSingleApplication(self.id)
+                for attr in self.settings:
+                    self.settings[attr] = newSettings[attr]
+                self.dlg.layertreewidget.populateTree(newSettings['layerTree'])
             # if the user clicked 'cancel', just return and stay in edit mode:
             else:
                 return
@@ -604,7 +672,6 @@ class ApplicationItem(TreeItem):
     def copyApplication(self):
         self.ressource.copyApplication(self.id, self.name)
         self.parent().update()
-
 
 
 class LayersItem(TreeItem):
@@ -697,10 +764,12 @@ class LayerItem(TreeItem):
 
         # unfortunately there is no option to retrieve the layer geometry (i. e.
         # point/line/polygon for vectorlayers) just from the json object.
-        # Therefore they get a default icon which will be updated as soon as
+        # Therefore they get a default polygon icon which will be updated as soon as
         # layer is added as WFS to QGIS - see def addQgsLayer()
         if datatype == 'Raster':
             self.icon = QgsLayerItem.iconRaster()
+        elif datatype == 'Vector':
+            self.icon = QgsLayerItem.iconPolygon()
         else:
             self.icon = QgsLayerItem.iconDefault()
         TreeItem.__init__(self, self.icon, name)
@@ -719,13 +788,19 @@ class LayerItem(TreeItem):
                 'opacity' : 1
             }
         }
-        QgsMapLayerRegistry.instance().layerRemoved.connect(self.updateLayerList)
+        if PYTHON_VERSION >= 3:
+            QgsProject.instance().layerRemoved.connect(self.updateLayerList)
+        else:
+            QgsMapLayerRegistry.instance().layerRemoved.connect(self.updateLayerList)
 
 
     def updateLayerList(self):
         if self.qgisLayers == []:
             return
-        currentMapLayers = QgsMapLayerRegistry.instance().mapLayers()
+        if PYTHON_VERSION >= 3:
+            currentMapLayers = QgsProject.instance().mapLayers()
+        else:
+            currentMapLayers = QgsMapLayerRegistry.instance().mapLayers()
         for qgisLayerItem in self.qgisLayers:
             if qgisLayerItem.id not in currentMapLayers:
                 self.qgisLayers.remove(qgisLayerItem)
@@ -759,12 +834,20 @@ class LayerItem(TreeItem):
         if not self.datatype == 'Raster':
             if layer.type() == QgsMapLayer.VectorLayer:
                 geom = layer.geometryType()
-                if geom == QGis.Point:
-                    self.icon = QgsLayerItem.iconPoint()
-                elif geom == QGis.Line:
-                    self.icon = QgsLayerItem.iconLine()
-                elif geom == QGis.Polygon:
-                    self.icon = QgsLayerItem.iconPolygon()
+                if PYTHON_VERSION >= 3:
+                    if geom == QgsWkbTypes.PointGeometry:
+                        self.icon = QgsLayerItem.iconPoint()
+                    elif geom == QgsWkbTypes.LineGeometry:
+                        self.icon = QgsLayerItem.iconLine()
+                    elif geom == QgsWkbTypes.PolygonGeometry:
+                        self.icon = QgsLayerItem.iconPolygon()
+                else:
+                    if geom == QGis.Point:
+                        self.icon = QgsLayerItem.iconPoint()
+                    elif geom == QGis.Line:
+                        self.icon = QgsLayerItem.iconLine()
+                    elif geom == QGis.Polygon:
+                        self.icon = QgsLayerItem.iconPolygon()
             else:
                 self.icon = QgsLayerItem.iconRaster()
             self.setIcon(0, self.icon)
@@ -790,6 +873,7 @@ class LayerItem(TreeItem):
             self.settings[attr] = settings[attr]
 
         self.dlg.nameEdit.setText(settings['name'])
+
         opac = settings['appearance']['opacity']
         if opac is None:
             opac = 0
@@ -912,6 +996,7 @@ class LayerItem(TreeItem):
             if warn == QMessageBox.Ok:
                 self.populateSettings()
             else:
+                self.dlg.editCheckBox.setChecked(True)
                 return
         self.stoppedEditing()
 
@@ -991,7 +1076,10 @@ class QgisLayerItem(TreeItem):
             self.actiontype = None
         self.parentShogunLayer = shogunLayerItem
         self.ressource = ressource
-        QgsMapLayerRegistry.instance().addMapLayer(self.layer)
+        if PYTHON_VERSION >= 3:
+            QgsProject.instance().addMapLayer(self.layer)
+        else:
+            QgsMapLayerRegistry.instance().addMapLayer(self.layer)
         if self.layer.type() == QgsMapLayer.VectorLayer:
             self.downloadStyle()
         self.layer.nameChanged.connect(self.on_name_changed)

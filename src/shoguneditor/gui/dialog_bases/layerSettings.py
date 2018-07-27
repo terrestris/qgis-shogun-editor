@@ -7,8 +7,18 @@
 __author__ = 'Jonas Grieb'
 __date__ = 'July 2018'
 
-from PyQt4.QtCore import QRect, Qt
-from PyQt4 import QtGui
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QRect, Qt
+    from qgis.PyQt.QtGui import QDoubleValidator
+    # we are faking the old way of QtGui, not the best style, but makes it easier
+    # for switching betweeng version 2 and 3
+    from qgis.PyQt import QtWidgets as QtGui
+else:
+    from PyQt4.QtCore import QRect, Qt
+    from PyQt4 import QtGui
+
 from qgis.gui import QgsMapLayerComboBox
 
 class LayerSettingsDialog(QtGui.QDialog):
@@ -68,7 +78,11 @@ class LayerSettingsDialog(QtGui.QDialog):
         self.sliderEdit = QtGui.QLineEdit(self.tabs[0])
         self.sliderEdit.setGeometry(QRect(400, 90, 30, 23))
         self.sliderEdit.setInputMask('9.99')
-        self.sliderEdit.setValidator(QtGui.QDoubleValidator(-0.01, 1.01, 2))
+        if sys.version_info[0] >= 3:
+            validator = QDoubleValidator(-0.01, 1.01, 2)
+        else:
+            validator = QtGui.QDoubleValidator(-0.01, 1.01, 2)
+        self.sliderEdit.setValidator(validator)
         self.tabedits.append(self.sliderEdit)
 
         self.hoverEdit = QtGui.QLineEdit(self.tabs[0])

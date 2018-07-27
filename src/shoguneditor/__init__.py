@@ -25,11 +25,11 @@
 
 
 def classFactory(iface):
-    '''Load ShogunEditorclass from file shogun_editor.
+    """Load ShogunEditorclass from file shogun_editor.
 
     :param iface: A QGIS interface instance.
     :type iface: QgisInterface
-    '''
+    """
     #
     from .shogun_editor import ShogunEditor
     return ShogunEditor(iface)

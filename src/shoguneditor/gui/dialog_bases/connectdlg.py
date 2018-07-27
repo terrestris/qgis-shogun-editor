@@ -7,8 +7,14 @@
 __author__ = 'Jonas Grieb'
 __date__ = 'July 2018'
 
-from PyQt4.QtCore import QRect
-from PyQt4.QtGui import QDialog, QLabel, QLineEdit, QPushButton
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QRect
+    from qgis.PyQt.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton
+else:
+    from PyQt4.QtCore import QRect
+    from PyQt4.QtGui import QDialog, QLabel, QLineEdit, QPushButton
 
 class ConnectDialog(QDialog):
     def  __init__(self):

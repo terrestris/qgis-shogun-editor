@@ -31,8 +31,8 @@ After copying just open up QGIS, activate the plugin in the plugin manager and y
 
 Important notes & missing features
 
+    The plugin works with QGIS 2.x and 3.x, but currently there is a problem with adding wfs layers
+    to QGIS ins 3.x, which has to be resolved.
     As already mentioned, the plugin works with basic authentication requests and therefore can only be used with Shogun2-Webapp installations which support basic authentication
-    Currently the plugin only support QGIS 2.X, but a version for 3.X is in process of development and will be released soon
-    Editing of an applications layertree via the plugin is not yet supported
     Layer styles based on custom icons in Shogun currently cannot be imported to QGIS, but styles with custom icons created in QGIS can be uploaded to Shogun
     Layer styles based on font symbols are currently not supported by the plugin

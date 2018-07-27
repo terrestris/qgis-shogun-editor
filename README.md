@@ -13,11 +13,16 @@ the user can edit applications and layers on the Shogun server, in interaction w
 # Features:
 
     * Add layers from Shogun to QGIS (as WFS, WMS or raw data)
+
     * Upload new layers (vector and raster format) from QGIS to the Shogun server
+
     * Upload layer style (vector layers only) from QGIS and apply to the layers in Shogun
       -> most basic styling is implemented, also the upload of custom symbols for point layers
+
     * Edit static data like names, descriptions, ...
+
     * Create new Shogun applications
+
     * Set applications homeview directly from the QGIS interface
 
 # Installation
@@ -37,11 +42,13 @@ After copying just open up QGIS, activate the plugin in the plugin manager and y
 
 # Important notes & missing features
 
+    * The plugin works with QGIS 2.x and 3.x, but currently there is a problem with adding wfs layers
+    to QGIS ins 3.x, which has to be resolved
+    
     * As already mentioned, the plugin works with basic authentication requests and therefore
     can only be used with Shogun2-Webapp installations which support basic  authentication
-    * Currently the plugin only support QGIS 2.X, but a version for 3.X is in
-    process of development and will be released soon
-    * Editing of an application's layertree via the plugin is not yet supported
+
     * Layer styles based on custom icons in Shogun currently cannot be imported to
+
     QGIS, but styles with custom icons created in QGIS can be uploaded to Shogun
     * Layer styles based on font symbols are currently not supported by the plugin

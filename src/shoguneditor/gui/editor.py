@@ -7,15 +7,24 @@
 __author__ = 'Jonas Grieb'
 __date__ = 'July 2018'
 
-from PyQt4.QtCore import QObject, Qt, QTimer
-from PyQt4.QtGui import QMenu, QAction, QMessageBox, QTreeWidgetItemIterator
+import sys
+
+if sys.version_info[0] >= 3:
+    from qgis.PyQt.QtCore import QObject, Qt, QTimer
+    from qgis.PyQt.QtWidgets import QMenu, QAction, QMessageBox
+    from qgis.PyQt.QtWidgets import QTreeWidgetItemIterator
+else:
+    from PyQt4.QtCore import QObject, Qt, QTimer
+    from PyQt4.QtGui import QMenu, QAction, QMessageBox, QTreeWidgetItemIterator
+
 from qgis.gui import QgsMessageBar
 from qgis.core import QgsNetworkAccessManager
 
 from .dialog_bases.connectdlg import ConnectDialog
 from .dialog_bases.dockwidget import DockWidget
-from editoritems import EditorItem, EditorTopItem, QgisLayerItem
+from .editoritems import EditorItem, EditorTopItem, QgisLayerItem, ApplicationItem, LayerItem
 from shoguneditor.connection.shogunressource import ShogunRessource
+
 
 class Editor(QObject):
     '''This class controls all plugin-related GUI elements.'''
@@ -27,8 +36,8 @@ class Editor(QObject):
 
         self.dock = DockWidget()
         self.connectdlg = ConnectDialog()
-        self.iface.addDockWidget( Qt.RightDockWidgetArea, self.dock )
-        self.dock.newConnectionButton.clicked.connect(self.connectdlg.show)
+        self.iface.addDockWidget( Qt.RightDockWidgetArea, self.dock)
+        self.dock.newConnectionButton.clicked.connect(lambda: self.showDialog(self.connectdlg))
         self.connectdlg.okButton.clicked.connect(self.setupNewConnection)
         self.topitem = EditorTopItem()
         self.connections = []
@@ -94,12 +103,12 @@ class Editor(QObject):
             action.triggered.connect(item.copyApplication)
         elif actionName == 'View Application in web browser':
             action.triggered.connect(lambda: item.ressource.viewApplicationOnline(item.id))
-        if actionName == 'Application Settings':
-            action.triggered.connect(lambda: self.showApplicationSettings(item))
         elif actionName == 'New Connection':
-            action.triggered.connect(lambda: self.connectdlg.show())
+            action.triggered.connect(lambda: self.showDialog(self.connectdlg))
+        elif actionName == 'Application Settings':
+            action.triggered.connect(lambda: self.showDialog(item))
         elif actionName == 'Layer Settings':
-            action.triggered.connect(lambda: self.showLayerSettings(item))
+            action.triggered.connect(lambda: self.showDialog(item))
         elif actionName == 'Remove Connection':
             action.triggered.connect(lambda: self.removeConnection(item))
         elif actionName == 'Refresh Connection':
@@ -125,6 +134,7 @@ class Editor(QObject):
         elif actionName == 'Refresh Layers':
             action.triggered.connect(item.update)
 
+
     def on_tree_item_double_clicked(self, item):
         if isinstance(item, QgisLayerItem):
             try:
@@ -133,21 +143,25 @@ class Editor(QObject):
                 pass
 
 
-    def showApplicationSettings(self, item):
-        if item.dlg is None:
-            item.createStaticSettings(self.iface)
-            item.populateSettings()
-            item.dlg.show()
+    def showDialog(self, item):
+        if not isinstance(item, ConnectDialog):
+            if item.dlg is None:
+                if isinstance(item, ApplicationItem):
+                    item.createStaticSettings(self.iface)
+                    item.populateSettings()
+                elif isinstance(item, LayerItem):
+                    item.createStaticSettings()
+                    item.populateSettings()
+            dialog = item.dlg
         else:
-            item.dlg.show()
+            dialog = self.connectdlg
 
-    def showLayerSettings(self,item):
-        if item.dlg is None:
-            item.createStaticSettings()
-            item.populateSettings()
-            item.dlg.show()
-        else:
-            item.dlg.show()
+        dialog.show()
+        try:
+            dialog.setWindowState(Qt.WindowActive)
+            dialog.activateWindow()
+        except:
+            pass
 
 
     def setupNewConnection(self):
@@ -164,8 +178,8 @@ class Editor(QObject):
         pw = self.connectdlg.passwordIn.text()
 
         if len(url) == 0 or len(name) == 0:
-            self.showWarning(self.connectdlg, 'Please fill in all '
-                'necessary fields')
+            self.showWarning(self.connectdlg, 'Please fill in all necessary '
+                'fields')
             self.connectdlg.show()
             return
 
@@ -184,8 +198,8 @@ class Editor(QObject):
 
         bool = newRessource.updateData()
         if not bool:
-            self.showWarning(self.connectdlg, 'Error: Could not retrieve '
-            'all data from Shogun')
+            self.showWarning(self.connectdlg, 'Error: Could not retrieve all '
+                'data from Shogun')
 
         self.connectdlg.hide()
 
@@ -217,18 +231,17 @@ class Editor(QObject):
         if success:
             msg = 'New style of layer '+ item.parentShogunLayer.name
             msg += ' was successfully uploaded to Shogun.'
-            self.iface.messageBar().pushMessage(
-                'Success', msg, QgsMessageBar.SUCCESS, 5)
+            self.iface.messageBar().pushSuccess('Success', msg)
         else:
             msg = 'New style of layer '+ item.parentShogunLayer.name
             msg += ' could not be uploaded to Shogun.'
-            self.iface.messageBar().pushMessage('Error',msg, QgsMessageBar.CRITICAL, 5)
+            self.iface.messageBar().pushCritical('Error',msg)
 
     def downloadStyle(self, item):
         success = item.downloadStyle()
         if not success:
             msg = 'Could not download Style for layer'
-            self.iface.messageBar().pushMessage('Error',msg, QgsMessageBar.CRITICAL, 5)
+            self.iface.messageBar().pushCritical('Error',msg)
 
     def loadAllAppLayers(self, item):
         layerIds, shogunConnectionItem = item.getAllAppLayersById()
