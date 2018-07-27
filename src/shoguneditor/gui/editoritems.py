@@ -560,7 +560,6 @@ class ApplicationItem(TreeItem):
 
     def stopEditing(self):
         changes = self.getAllChanges()
-        print(changes)
         if len(changes) > 0:
             warn = QMessageBox.warning(self.dlg, 'Warning','All changes will be'
                 ' lost. Continue?', QMessageBox.Cancel, QMessageBox.Ok)
@@ -575,7 +574,6 @@ class ApplicationItem(TreeItem):
     def saveChanges(self):
         changes = self.getAllChanges()
         if len(changes) > 0:
-            print(changes)
             conf = QMessageBox.warning(self.dlg, 'Confirm', 'Please confirm you'
                 ' want to save the changes', QMessageBox.Cancel, QMessageBox.Ok)
             if conf == QMessageBox.Ok:
@@ -725,10 +723,8 @@ class LayersItem(TreeItem):
 
     def uploadLayerAction(self):
         layer = self.uploadDialog.layerBox.currentLayer()
-        print("current layer is:", layer)
         # layerutils
         pathToZipFile, pathToTempDir = prepareLayerForUpload(layer, self.uploadDialog)
-        print("over")
         if pathToZipFile:
             if layer.type() == QgsMapLayer.VectorLayer:
                 type = 'Vector'

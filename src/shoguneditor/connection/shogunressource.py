@@ -501,9 +501,7 @@ class ShogunRessource:
         url = self.baseurl + 'rest/layertree'
         h = {'Content-type':'application/json'}
         body = json.dumps(data)
-        print(body)
         response = self.http.request(url, method = 'POST', body = body, headers = h)
-        print(response)
         return response[0]['status']
 
 
@@ -511,9 +509,7 @@ class ShogunRessource:
         url = self.baseurl + 'rest/layertree/' + str(layerTreeItemId)
         h = {'Content-type':'application/json'}
         body = json.dumps(data)
-        print(body)
         response = self.http.request(url, method = 'PUT', body = body, headers = h)
-        print(response)
         return response[0]['status']
 
 
@@ -521,7 +517,5 @@ class ShogunRessource:
         url = self.baseurl + 'rest/layertree/' + str(layerTreeItemIdd)
         h = {'Content-type':'application/json'}
         body = json.dumps({'id' : layerTreeItemIdd})
-        print(body)
         response = self.http.request(url, method = 'DELETE', body = body, headers = h)
-        print(response)
         return response[0]['status']

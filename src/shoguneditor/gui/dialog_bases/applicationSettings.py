@@ -213,6 +213,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
                 newItem.setText(0, layerName)
                 newItem.role = self.SHOGUN_TREE_LEAF
                 newItem.layerId = int(layerId)
+                newItem.setCheckState(0,Qt.Checked)
             else:
                 self.changePositionInTree(self.invisibleRootItem())
         else:
@@ -231,6 +232,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
                 newItem.setText(0, layerName)
                 newItem.role = self.SHOGUN_TREE_LEAF
                 newItem.layerId = int(layerId)
+                newItem.setCheckState(0,Qt.Checked)
             else:
                 self.changePositionInTree(dropItem)
         iter = QtGui.QTreeWidgetItemIterator(self)

@@ -25,7 +25,7 @@ else:
     from PyQt4.QtCore import QRect
     from PyQt4.QtXml import QDomDocument
     import urllib
-    from qgis.core import Qgis
+    from qgis.core import QGis
 
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
 from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
@@ -299,7 +299,6 @@ def prepareLayerForUpload(layer, uploadDialog):
             zipSuccess = createZipFromShapefile(file, zipfilePath, delete = False)
         else:
             path = os.path.join(tmpdir, 'VectorlayerFromQGisPlugin.shp')
-            print("write shp to ",path)
             file = writeShapefile(layer, path)
             if not file:
                 uploadDialog.log('Error: Could not write the shapefile ')
@@ -324,7 +323,6 @@ def prepareLayerForUpload(layer, uploadDialog):
                 return
             zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete = True)
     uploadDialog.log(zipSuccess)
-    print("we are returning")
     return zipfilePath, tmpdir
 
 
@@ -355,7 +353,6 @@ def createZipFromShapefile(filepath, zipfilePath, delete=False):
 
     # create a new zip-archive at zipfilePath
     newZipfile = zipfile.ZipFile(zipfilePath, 'w', zipfile.ZIP_DEFLATED)
-    print("zipfile create:", zipfilePath)
     for part in shapefileParts:
         # add the parts of the shapefile to the zip-archive
         newZipfile.write(part, arcname = os.path.basename(part))
