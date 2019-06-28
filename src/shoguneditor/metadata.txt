@@ -2,8 +2,7 @@
 
 [general]
 name=Shogun Editor
-qgisMinimumVersion=2.14
-qgisMaximumVersion=3.4
+qgisMinimumVersion=3.0
 description=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS.
 version=0.2
 author=J. Grieb
