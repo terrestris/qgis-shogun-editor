@@ -40,6 +40,32 @@ qgis plugins directory which you should find at:
 
 After copying just open up QGIS, activate the plugin in the plugin manager and you are done
 
+# Development
+
+## Debugging in VSCode
+
+### install QGIS plugins
+
+- install `Plugin Reloader` (experimental)
+- install `debugvs` (experimental)
+
+### install python dependencies
+
+- install ptvsd `(sudo) pip3 install ptvsd (--user)` (needed by `debugvs`)
+- add qgis to python path: `export PYTHONPATH=/usr/share/qgis/python` (depends on location of `qgis/python`)
+
+### install VSCode extensions
+
+- install `python` extension from marketplace
+
+### debug setup
+
+- in QGIS open `Plugins > Plugin Reloader > Configure`
+- select plugin that should be reloaded
+- start `debugvs`: In QGIS open `Plugins > Enable debug for visual studio > Enable debug for visual studio`
+- in VSCode go to `Debug` tab and start debugging in `attach` mode
+- make sure that property `pathMappings.remoteRoot` is set in launch.json as absolute path or VSCode variable
+
 # Important notes & missing features
 
     * The plugin works with QGIS 2.x and 3.x, but currently there is a problem with adding wfs layers
