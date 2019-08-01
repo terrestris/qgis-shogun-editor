@@ -860,7 +860,7 @@ class LayerItem(TreeItem):
         self.dlg.editCheckBox.clicked.connect(self.startEditing)
         self.dlg.pushButtonCancel.clicked.connect(self.stopEditing)
         if self.datatype == 'Vector' or self.datatype == '':
-            fieldNames = self.ressource.getFieldNamesFromWfs(self.name)
+            fieldNames = self.ressource.getFieldNamesFromWfs(self.source['layerNames'])
             if fieldNames:
                 self.dlg.hoverBox.addItems(fieldNames)
         else:
