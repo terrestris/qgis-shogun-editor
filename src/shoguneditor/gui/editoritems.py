@@ -970,7 +970,7 @@ class LayerItem(TreeItem):
             if float(opacity) != self.settings['appearance']['opacity']:
                 changes['appearance'] = {}
                 changes['appearance']['opacity'] = float(opacity)
-            hoverInput = self.dlg.hoverEdit.text()
+        hoverInput = self.dlg.hoverEdit.text()
         if len(hoverInput) == 0:
             hoverInput = None
         if hoverInput != self.settings['appearance']['hoverTemplate']:

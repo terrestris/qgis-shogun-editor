@@ -458,7 +458,7 @@ class ShogunRessource:
         response = self.http.request(url, method = 'POST', body = data, headers = h)
 
     def getFieldNamesFromWfs(self, layerRessourceName):
-        url = self.baseurl + 'geoserver-na.action?service=WFS&request=DescribeFeatureType&typeName='
+        url = self.baseurl + 'geoserver-noauth.action?service=WFS&request=DescribeFeatureType&typeName='
         url += layerRessourceName + '&outputFormat=application/json'
         response = self.http.request(url)
         if response[0]['status'] == 200 or response[0]['status'] == 201:
