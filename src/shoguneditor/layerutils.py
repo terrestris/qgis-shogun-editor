@@ -53,7 +53,7 @@ def createLayer(layerItem, epsg):
         return createRasterLayer(layerItem, url, epsg)
 
     elif dataType == 'WMS':
-        if layerurl == '/shogun2-webapp/geoserver-noauth.action':
+        if layerurl == '/shogun2-webapp/geoserver.action':
             url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
             return createWmsLayerFromShogun(layerItem, url)
         else:
@@ -137,7 +137,7 @@ def createRasterLayer(layerItem, url, epsg):
             'identifier' : layerName
         }
 
-        #build the fitting url from the baseurl ('http...geoserver-noauth.action?')
+        #build the fitting url from the baseurl ('http...geoserver.action?')
         #and the parameters
         baseurl = url + 'service=WCS&'
         if PYTHON_VERSION >= 3:
