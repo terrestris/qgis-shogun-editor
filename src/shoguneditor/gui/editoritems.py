@@ -963,11 +963,13 @@ class LayerItem(TreeItem):
 
     def getGeneralChanges(self):
         changes = {}
+        opacity = self.dlg.sliderEdit.text()
         if self.dlg.nameEdit.text() != self.settings['name']:
             changes['name'] = self.dlg.nameEdit.text()
-        if float(self.dlg.sliderEdit.text()) != self.settings['appearance']['opacity']:
-            changes['appearance'] = {}
-            changes['appearance']['opacity'] = float(self.dlg.sliderEdit.text())
+        if type(opacity) == float or type(opacity) == int:
+            if float(opacity) != self.settings['appearance']['opacity']:
+                changes['appearance'] = {}
+                changes['appearance']['opacity'] = float(opacity)
         hoverInput = self.dlg.hoverEdit.text()
         if len(hoverInput) == 0:
             hoverInput = None

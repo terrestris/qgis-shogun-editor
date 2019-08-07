@@ -3,9 +3,9 @@
 [general]
 name=Shogun Editor
 qgisMinimumVersion=2.14
-qgisMaximumVersion=3.4
+qgisMaximumVersion=3.99
 description=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS.
-version=0.2
+version=0.3
 author=J. Grieb
 email=jgrieb@terrestris.de, info@terrestris.de
 
@@ -20,6 +20,9 @@ repository=https://github.com/terrestris/qgis-shogun-editor
 changelog=
     0.2:
         - Migration to QGIS 3, add layer tree editing
+    0.3:
+        - Supports QGIS 3.5 - 3.8
+        - Bugfixes
 
 # Tags are comma separated with spaces allowed
 tags=python, shogun, rest, wfs, wms, sld

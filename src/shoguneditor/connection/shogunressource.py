@@ -282,14 +282,13 @@ class ShogunRessource:
         # have to save the sld to a file, then do layer.loadSldStyle(file)
         # can someone fix it?#
 
-
         shogunlayer = qgisLayerItem.parentShogunLayer
         url = shogunlayer.source['url']
         if url.startswith('/shogun2-webapp'):
             url = self.baseurl.rstrip('/shogun2-webapp/rest/') + url
             url += '?service=WMS&request=GetStyles&version=1.1.1&layers='
             url += shogunlayer.source['layerNames']
-        response = self.http.request(url)
+        response = self.http.request(url, authenticate = False)
 
         mydoc = QDomDocument()
         mydoc.setContent(response[1])
@@ -306,8 +305,6 @@ class ShogunRessource:
         # exchange of icons
         # problem is that shogun2 only serves png icons, and qgis needs
         # svg to turn them into a style
-
-
         if '<sld:ExternalGraphic>' in response[1]:
             self.iface.messageBar().pushInfo('Info',
             'The downloaded style for the current layer contains custom icons '
@@ -335,7 +332,6 @@ class ShogunRessource:
             file.write(response[1])
         return filename, geoServerStyleName
 
-
     def uploadStyle(self, qgisLayerItem):
         url = self.baseurl.rstrip('rest/') + '/sld/update.action'
         h = {'Content-type': 'application/x-www-form-urlencoded; charset=UTF-8'}
@@ -348,7 +344,6 @@ class ShogunRessource:
             return True
         else:
             return False
-
 
     def prepareIconForUpload(self, svgIconName):
         svgPaths = QgsApplication.svgPaths()
@@ -458,7 +453,7 @@ class ShogunRessource:
         response = self.http.request(url, method = 'POST', body = data, headers = h)
 
     def getFieldNamesFromWfs(self, layerRessourceName):
-        url = self.baseurl + 'geoserver.action?service=WFS&request=DescribeFeatureType&typeName='
+        url = self.baseurl + 'geoserver-noauth.action?service=WFS&request=DescribeFeatureType&typeName='
         url += layerRessourceName + '&outputFormat=application/json'
         response = self.http.request(url)
         if response[0]['status'] == 200 or response[0]['status'] == 201:
