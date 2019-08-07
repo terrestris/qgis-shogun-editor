@@ -44,7 +44,7 @@ def createLayer(layerItem, epsg):
     dataType = layerItem.datatype
 
     # every layerItem.source should have an attribute 'dataType'
-    if dataType == 'Vector':
+    if dataType == 'vector' or dataType == 'Vector':
         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
         return createWfsLayer(layerItem, url, epsg)
 
@@ -87,23 +87,27 @@ def createLayer(layerItem, epsg):
             return createWmsLayerNormal(layerItem, layerurl, epsg)
 
     else:
-        info = 'Layer source '+ url + ' could not be loaded'
+        info = 'Layer source '+ layerurl + ' could not be loaded'
         QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
 
 
 
 def createWfsLayer(layerItem, url, epsg):
     params = {
+        'service': 'WFS',
         'srsname': epsg,
         'typename': layerItem.source['layerNames'],
+        'typenames': layerItem.source['layerNames'],
         'url': url + 'typename=' + layerItem.source['layerNames'],
-        'version': 'auto'
+        'version': 'auto',
+        'request': 'GetCapabilities'
         }
+    if PYTHON_VERSION >= 3:
+        url = url + urllib.parse.unquote(urllib.parse.urlencode(params))
+    else:
+        url = url + urllib.unquote(urllib.urlencode(params))
 
-    uri = ''
-    for i in params.items():
-        uri += i[0] + '=\'' + i[1] + '\''
-    layer = QgsVectorLayer(uri, 'SHOGUN-Layer: ' + layerItem.name, 'WFS')
+    layer = QgsVectorLayer(url, 'SHOGUN-Layer: ' + layerItem.name, 'WFS')
     return layer
 
 

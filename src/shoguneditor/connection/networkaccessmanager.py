@@ -140,7 +140,7 @@ class NetworkAccessManager():
         if self.debug:
             QgsMessageLog.logMessage(msg, "NetworkAccessManager")
 
-    def request(self, url, method="GET", body=None, headers=None, redirections=DEFAULT_MAX_REDIRECTS, connection_type=None):
+    def request(self, url, method="GET", body=None, headers=None, redirections=DEFAULT_MAX_REDIRECTS, connection_type=None, authenticate = True):
         """
         Make a network request by calling QgsNetworkAccessManager.
         redirections argument is ignored and is here only for httplib2 compatibility.
@@ -157,6 +157,8 @@ class NetworkAccessManager():
             'exception': None,
         })
         req = QNetworkRequest()
+        req.setAttribute(QNetworkRequest.CookieSaveControlAttribute, QNetworkRequest.Manual)
+        req.setAttribute(QNetworkRequest.CookieLoadControlAttribute, QNetworkRequest.Manual)
         # Avoid double quoting form QUrl
         if PYTHON_VERSION >= 3:
             url = urllib.parse.unquote(url)
@@ -170,7 +172,7 @@ class NetworkAccessManager():
             else:
                 headers = {'Cookie':self.cookie}
 
-        if self.basicauth is not None:
+        if self.basicauth is not None and authenticate:
             if headers is not None:
                 headers['Authorization'] = self.basicauth
             else:
