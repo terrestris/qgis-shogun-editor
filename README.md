@@ -73,6 +73,13 @@ ln -s  ~/workspace/qgis-shogun-editor/src/shoguneditor shoguneditor
 * in VSCode go to `Debug` tab and start debugging in `attach` mode
 * make sure that property `pathMappings.remoteRoot` is set in launch.json as absolute path or VSCode variable
 
+### Create python virtual environment
+```bash
+python3 -m venv qgis-shogun-editor/venv
+source qgis-shogun-editor/venv/bin/activate
+pip install -r qgis-shogun-editor/requirements/requirements.dev.txt
+```
+
 # Important notes & missing features
 
 * The plugin works with QGIS 2.x and 3.x, but currently there is a problem with adding wfs layers
