@@ -33,11 +33,9 @@ if sys.version_info[0] >= 3:
     from qgis.PyQt.QtWidgets import QAction
     from qgis.PyQt.QtGui import QIcon
     from qgis.PyQt.QtCore import Qt
-    from . import resources3
 else:
     from PyQt4.QtCore import Qt
     from PyQt4.QtGui import QAction, QIcon
-    from . import resources2
 
 from .gui.editor import Editor
 
