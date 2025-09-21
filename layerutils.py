@@ -30,64 +30,61 @@ else:
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
 from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
 
-from shoguneditor.gui.dialog_bases.addraster import AddRasterDialog
 
-PYTHON_VERSION = sys.version_info[0]
 
 '''This module contains some helper functions for the shogun-editor plugin'''
-
-def createLayer(layerItem, epsg):
+def create_layer(layer_item, epsg):
     #Shogun Webapp saves all layers in the following espg, therefore the
     #variable can be static
-    layerurl = layerItem.source['url']
+    layer_url = layer_item.source['url']
 
-    dataType = layerItem.datatype
+    data_type = layer_item.datatype
 
-    # every layerItem.source should have an attribute 'dataType'
-    if dataType == 'vector' or dataType == 'Vector':
-        url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        return createWfsLayer(layerItem, url, epsg)
+    # every layerItem.source should have an attribute 'data_type'
+    if data_type == 'vector' or data_type == 'Vector':
+        url = layer_item.ressource.baseurl.rstrip('/shogun2-webapp/') + layer_url + '?'
+        return createWfsLayer(layer_item, url, epsg)
 
-    elif dataType == 'Raster':
-        url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        return createRasterLayer(layerItem, url, epsg)
+    elif data_type == 'Raster':
+        url = layer_item.ressource.baseurl.rstrip('/shogun2-webapp/') + layer_url + '?'
+        return createRasterLayer(layer_item, url, epsg)
 
-    elif dataType == 'WMS':
-        if layerurl == '/shogun2-webapp/geoserver.action':
-            url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-            return createWmsLayerFromShogun(layerItem, url)
+    elif data_type == 'WMS':
+        if layer_url == '/shogun2-webapp/geoserver.action':
+            url = layer_item.ressource.baseurl.rstrip('/shogun2-webapp/') + layer_url + '?'
+            return create_wms_layer_from_shogun(layer_item, url)
         else:
-            return createWmsLayer(layerItem, layerurl, epsg)
+            return createWmsLayer(layer_item, layer_url, epsg)
 
-    # if for any reason the parameter 'dataType' is not set correctly, we check the url
+    # if for any reason the parameter 'data_type' is not set correctly, we check the url
     # of the layer to determine if it's a WFS/WCS from the shogun-geoserver
     # (url has'shogun2-webapp') or if it's a WMS from an outer source (other url)
-    elif dataType == 'unknown' or dataType == None or dataType == '':
-        if layerurl.startswith('/shogun2-webapp'):
-            url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+    elif data_type == 'unknown' or data_type == None or data_type == '':
+        if layer_url.startswith('/shogun2-webapp'):
+            url = layer_item.ressource.baseurl.rstrip('/shogun2-webapp/') + layer_url + '?'
             try:
-                lyr = createWfsLayer(layerItem, url, epsg)
+                lyr = createWfsLayer(layer_item, url, epsg)
                 if lyr.isValid():
                     return lyr
             except:
                 pass
             try:
-                lyr =  createWmsLayerFromShogun(layerItem, url, epsg)
+                lyr =  create_wms_layer_from_shogun(layer_item, url, epsg)
                 if lyr.isValid():
                     return lyr
             except:
                 pass
             try:
-                lyr =  createRasterLayer(layerItem, url, epsg)
+                lyr =  createRasterLayer(layer_item, url, epsg)
                 if lyr.isValid():
                     return lyr
             except:
                 pass
         else:
-            return createWmsLayerNormal(layerItem, layerurl, epsg)
+            return createWmsLayerNormal(layer_item, layer_url, epsg)
 
     else:
-        info = 'Layer source '+ layerurl + ' could not be loaded'
+        info = 'Layer source '+ layer_url + ' could not be loaded'
         QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
 
 
@@ -121,7 +118,7 @@ def createRasterLayer(layerItem, url, epsg):
         return False
 
     elif userSelection == 1:
-        return createWmsLayerFromShogun(layerItem, url, epsg)
+        return create_wms_layer_from_shogun(layerItem, url, epsg)
 
     elif userSelection == 2:
 
@@ -178,7 +175,7 @@ def createWmsLayerNormal(layerItem, url, epsg):
 
 
 
-def createWmsLayerFromShogun(layerItem, url, epsg):
+def create_wms_layer_from_shogun(layerItem, url, epsg):
     layerNames = layerItem.source['layerNames']
     params = {
         'IgnoreGetMapUrl' : 1,

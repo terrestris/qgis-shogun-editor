@@ -1,37 +1,47 @@
-# Mandatory items:
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Shogun Editor
-qgisMinimumVersion=2.14
-qgisMaximumVersion=3.99
-description=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS.
-version=0.3
-author=J. Grieb
-email=jgrieb@terrestris.de, info@terrestris.de
+name=ShogunEditor
+qgisMinimumVersion=3.0
+description=A QGIS plugin to connect with a SHOGun instance on a remote or local server and edit it's content from QGIS
+version=0.1
+author=terrestris GmbH & Co. KG
+email=info@terrestris.de
 
-about=A QGIS plugin to connect with a Shogun GIS client instance on a remote or local server and edit it's content from QGIS. Supports editing and creating layers and applications, upload new styles from QGIS to Shogun and more. It's funcionalities are in some way similar to the Geoserver Exploerer plugin, but instead of accessing the base geoserver it only interacts with the Shogun2-Webapp client (RESTful) interface.
+about=SHOGUN
 
-tracker=https://github.com/terrestris/qgis-shogun-editor/issues
+tracker=https://github.com/terrestris/qgis-shogun-editor
 repository=https://github.com/terrestris/qgis-shogun-editor
 # End of mandatory metadata
 
 # Recommended items:
 
-changelog=
-    0.2:
-        - Migration to QGIS 3, add layer tree editing
-    0.3:
-        - Supports QGIS 3.5 - 3.8
-        - Bugfixes
+hasProcessingProvider=no
+# Uncomment the following line and add your changelog:
+# changelog=
 
 # Tags are comma separated with spaces allowed
-tags=python, shogun, rest, wfs, wms, sld
+tags=python
 
-homepage=https://www.terrestris.de/en/
-category=Web
-icon=logo-with-tag.png
+homepage=http://terrestris.de
+category=Plugins
+icon=icon.png
 # experimental flag
-experimental=True
+experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+Category of the plugin: Raster, Vector, Database or Web
+# category=
+
+# If the plugin can run on QGIS Server.
+server=False
+
