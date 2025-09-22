@@ -3,6 +3,6 @@ flake8-builtins
 flake8-isort
 setuptools
 pylint
-pep8
+pycodestyle
 autopep8
 black

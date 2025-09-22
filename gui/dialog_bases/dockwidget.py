@@ -4,9 +4,6 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import sys
 
 if sys.version_info[0] >= 3:
@@ -15,6 +12,9 @@ if sys.version_info[0] >= 3:
 else:
     from PyQt4.QtCore import QRect, Qt
     from PyQt4.QtGui import QDockWidget, QPushButton, QTreeWidget, QWidget
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class DockWidget(QDockWidget):

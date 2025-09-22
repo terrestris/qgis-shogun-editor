@@ -4,9 +4,6 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import sys
 
 from qgis.gui import QgsExtentGroupBox
@@ -16,6 +13,10 @@ from qgis.gui import QgsExtentGroupBox
 from qgis.PyQt import QtWidgets as QtGui
 from qgis.PyQt.QtCore import QRect, Qt
 from qgis.PyQt.QtGui import QFont
+
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class LayerListItem(QtGui.QListWidgetItem):
@@ -51,12 +52,8 @@ class LayerTreeItem(QtGui.QTreeWidgetItem):
     def __init__(self, parent):
         super(LayerTreeItem, self).__init__(parent)
         self.setFlags(
-            Qt.ItemIsEnabled
-            | Qt.ItemIsSelectable
-            | Qt.ItemIsDragEnabled
-            | Qt.ItemIsSelectable
-            | Qt.ItemIsUserCheckable
-            | Qt.ItemIsDropEnabled
+            Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsDragEnabled |
+            Qt.ItemIsSelectable | Qt.ItemIsUserCheckable | Qt.ItemIsDropEnabled
         )
         self.savedAttributes = {}
         self.newAttributes = {}
@@ -70,7 +67,7 @@ class LayerTreeItem(QtGui.QTreeWidgetItem):
         self.id = self.savedAttributes["id"]
         if self.savedAttributes["root"]:
             return
-        if self.savedAttributes["checked"] == True:
+        if self.savedAttributes["checked"]:
             self.setCheckState(0, Qt.Checked)
         else:
             self.setCheckState(0, Qt.Unchecked)
@@ -179,7 +176,7 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             treeitem.updateNewAttributes()
             change = treeitem.getItemChange()
             if change is not None:
-                if not "id" in change:
+                if "id" not in change:
                     allChanges["newItems"].append(change)
                 else:
                     allChanges["changeItems"].append(change)
@@ -388,13 +385,13 @@ class ApplicationSettingsDialog(QtGui.QDialog):
             self.tabWidget.addTab(t, tab[0])
 
             for label in tab[1]:
-                l = QtGui.QLabel(t)
-                l.setText(label[0])
-                l.setGeometry(QRect(label[1][0], label[1][1], label[1][2], label[1][3]))
+                l2 = QtGui.QLabel(t)
+                l2.setText(label[0])
+                l2.setGeometry(QRect(label[1][0], label[1][1], label[1][2], label[1][3]))
                 if tab[0] == "Layer":
                     font = QFont("Arial", 12)
                     font.setBold(True)
-                    l.setFont(font)
+                    l2.setFont(font)
 
         self.tabWidget.setCurrentIndex(0)
 

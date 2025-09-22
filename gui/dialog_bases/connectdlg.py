@@ -4,9 +4,6 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import sys
 
 if sys.version_info[0] >= 3:
@@ -15,6 +12,9 @@ if sys.version_info[0] >= 3:
 else:
     from PyQt4.QtCore import QRect
     from PyQt4.QtGui import QDialog, QLabel, QLineEdit, QPushButton
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class ConnectDialog(QDialog):

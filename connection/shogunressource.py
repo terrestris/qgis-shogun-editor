@@ -4,8 +4,6 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
 
 import json
 import os
@@ -18,15 +16,8 @@ from qgis.PyQt.QtCore import QFile, QIODevice, QSize
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtNetwork import QHttpMultiPart, QHttpPart, QNetworkRequest
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtNetwork import QNetworkRequest, QHttpPart, QHttpMultiPart
-from qgis.PyQt.QtCore import QFile, QIODevice, QSize
 
-from qgis.core import QgsApplication
-from qgis.gui import QgsMessageBar
-
-from .networkaccessmanager import NetworkAccessManager, RequestsExceptionConnectionError, RequestsException
 from ..layerutils import createAndParseSld
-
 from .networkaccessmanager import (
     NetworkAccessManager,
     RequestsException,
@@ -34,6 +25,9 @@ from .networkaccessmanager import (
 )
 
 PYTHON_VERSION = sys.version_info[0]
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class ShogunRessource:
@@ -87,18 +81,17 @@ class ShogunRessource:
             if testresponse[0]["status"] > 199 and testresponse[0]["status"] < 210:
                 return (True, "")
         except RequestsException as e:
+            print('Error during connection test: ' + str(e))
             if self.baseurl.startswith("https"):
-                # if the first try with 'https' was not successfull try http:
+                # if the first try with 'https' was not successful try http:
                 testurl = "http" + testurl[5:]
                 try:
                     testresponse = self.http.request(testurl, method="HEAD")
-                    if (
-                        testresponse[0]["status"] > 199
-                        and testresponse[0]["status"] < 210
-                    ):
+                    if testresponse[0]["status"] > 199 and testresponse[0]["status"] < 210:
                         self.baseurl = "http" + self.baseurl[5:]
                         return (True, "")
                 except RequestsException as e:
+                    print('Could not fetch fetch applications ' + str(e))
                     pass
         return (False, "Error : Failed to connect to the server")
 
@@ -450,17 +443,17 @@ class ShogunRessource:
     def requestCrsUpdateOnLayer(self, importJobId):
         url = self.baseurl + "/import/update-crs-for-import.action"
         data = (
-            "importJobId="
-            + str(importJobId)
-            + "&taskId=0&fileProjection=EPSG%3A3857&layerName=&dataType=Vector"
+            "importJobId=" +
+            str(importJobId) +
+            "&taskId=0&fileProjection=EPSG%3A3857&layerName=&dataType=Vector"
         )
         h = {"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
         response = self.http.request(url, method="POST", body=data, headers=h)
 
     def getFieldNamesFromWfs(self, layerRessourceName):
         url = (
-            self.baseurl
-            + "geoserver-noauth.action?service=WFS&request=DescribeFeatureType&typeName="
+            self.baseurl +
+            "geoserver-noauth.action?service=WFS&request=DescribeFeatureType&typeName="
         )
         url += layerRessourceName + "&outputFormat=application/json"
         response = self.http.request(url)

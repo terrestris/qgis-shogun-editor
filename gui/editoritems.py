@@ -4,9 +4,6 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import os
 import sys
 
@@ -21,12 +18,16 @@ from ..layerutils import prepareLayerForUpload, createLayer
 from .dialog_bases.applicationSettings import ApplicationSettingsDialog
 from .dialog_bases.layerSettings import LayerSettingsDialog, UploadLayerDialog
 
+
+__author__ = "ntreff"
+__date__ = "July 2025"
+
 PYTHON_VERSION = sys.version_info[0]
 
 """This file contains all classes used in the QTreeWidget representating the
 structure of the connected shogun2-webapp ressource"""
 
-## TODO: the classes LayerItem and ApplicationItem could be merged or inherit
+# TODO: the classes LayerItem and ApplicationItem could be merged or inherit
 # from a common abstract class, the same is LayerSettingsDialog and
 # ApplicationSettingsDialog. Note when refactoring for future release
 
@@ -73,11 +74,13 @@ class EditorItem(TreeItem):
 
     def disconnectSignals(self):
         if self.layersitem is not None:
-            for layer in self.layersitem.layerlist:
-                try:
-                    QgsProject.instance().layerRemoved.disconnect(layer.updateLayerList)
-                except:
-                    pass
+            print("disconnecting signals for layersitem")
+            # TODO: Check - code seems to be unreachable
+            # for layer in self.layersitem.layerlist:
+            #     try:
+            #         QgsProject.instance().layerRemoved.disconnect(layer.updateLayerList)
+            #     except:
+            #         pass
 
     def update(self):
         for x in [self.applicationsitem, self.layersitem]:
@@ -444,7 +447,7 @@ class ApplicationItem(TreeItem):
             allChanges["general"] = self.getGeneralChanges()
 
         if self.getActiveToolsChanges() is not None:
-            if not "general" in allChanges:
+            if "general" not in allChanges:
                 allChanges["general"] = {}
             allChanges["general"]["activeTools"] = self.getActiveToolsChanges()
 
@@ -460,7 +463,7 @@ class ApplicationItem(TreeItem):
             allChanges["permissions"] = {"User": userPermissionChanges}
         groupPermissionChanges = self.getPermissionChanges("UserGroup")
         if groupPermissionChanges is not None:
-            if not "permissions" in allChanges:
+            if "permissions" not in allChanges:
                 allChanges["permissions"] = {}
             allChanges["permissions"]["UserGroup"] = groupPermissionChanges
 
@@ -537,7 +540,7 @@ class ApplicationItem(TreeItem):
                 if table.item(row, p[0]).checkState() == 2:
                     currentPermissionsInTable.append(p[1])
 
-            if entry["permissions"] == None:
+            if entry["permissions"] is None:
                 oldPermissions = []
             else:
                 oldPermissions = entry["permissions"]["permissions"]
@@ -595,18 +598,14 @@ class ApplicationItem(TreeItem):
             )
             if conf == QMessageBox.Ok:
                 if "general" in changes:
-                    #'changes' will be sent as the data, therefore append the id
+                    # 'changes' will be sent as the data, therefore append the id
                     # as a key, so that the data will be recognized
                     changes["general"]["id"] = self.id
                     responseCode = self.ressource.editApplication(
                         self.id, changes["general"]
                     )
                     # update the name in the tree view:
-                    if (
-                        "name" in changes["general"]
-                        and responseCode > 199
-                        and responseCode < 299
-                    ):
+                    if ("name" in changes["general"] and responseCode > 199 and responseCode < 299):
                         self.name = changes["general"]["name"]
                         self.setText(0, self.name)
 
@@ -787,7 +786,8 @@ class LayersItem(TreeItem):
             try:
                 os.remove(pathToZipFile)
                 os.rmdir(pathToTempDir)
-            except:
+            except Exception as e:
+                print('Error occurred: ' + str(e))
                 pass
 
 
@@ -938,7 +938,7 @@ class LayerItem(TreeItem):
                 if table.item(row, p[0]).checkState() == 2:
                     currentPermissionsInTable.append(p[1])
 
-            if entry["permissions"] == None:
+            if entry["permissions"] is None:
                 oldPermissions = []
             else:
                 oldPermissions = entry["permissions"]["permissions"]
@@ -970,7 +970,7 @@ class LayerItem(TreeItem):
             changes["permissions"] = {"User": userPermissionChanges}
         groupPermissionChanges = self.getPermissionChanges("UserGroup")
         if groupPermissionChanges is not None:
-            if not "permissions" in changes:
+            if "permissions" not in changes:
                 changes["permissions"] = {}
             changes["permissions"]["UserGroup"] = groupPermissionChanges
 
@@ -984,7 +984,7 @@ class LayerItem(TreeItem):
         opacity = self.dlg.sliderEdit.text()
         if self.dlg.nameEdit.text() != self.settings["name"]:
             changes["name"] = self.dlg.nameEdit.text()
-        if type(opacity) == float or type(opacity) == int:
+        if type(opacity) is float or type(opacity) is int:
             if float(opacity) != self.settings["appearance"]["opacity"]:
                 changes["appearance"] = {}
                 changes["appearance"]["opacity"] = float(opacity)
@@ -992,7 +992,7 @@ class LayerItem(TreeItem):
         if len(hoverInput) == 0:
             hoverInput = None
         if hoverInput != self.settings["appearance"]["hoverTemplate"]:
-            if not "appearance" in changes:
+            if "appearance" not in changes:
                 changes["appearance"] = {}
             changes["appearance"]["hoverTemplate"] = self.dlg.hoverEdit.text()
 

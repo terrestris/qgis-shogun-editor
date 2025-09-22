@@ -4,10 +4,8 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import sys
+from qgis.gui import QgsMapLayerComboBox
 
 if sys.version_info[0] >= 3:
     # we are faking the old way of QtGui, not the best style, but makes it easier
@@ -19,7 +17,8 @@ else:
     from PyQt4.QtCore import QRect, Qt
     from PyQt4 import QtGui
 
-from qgis.gui import QgsMapLayerComboBox
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class LayerSettingsDialog(QtGui.QDialog):
@@ -72,13 +71,13 @@ class LayerSettingsDialog(QtGui.QDialog):
             self.tabWidget.addTab(t, tab[0])
 
             for label in tab[1]:
-                l = QtGui.QLabel(t)
-                l.setGeometry(QRect(label[1][0], label[1][1], label[1][2], label[1][3]))
+                l2 = QtGui.QLabel(t)
+                l2.setGeometry(QRect(label[1][0], label[1][1], label[1][2], label[1][3]))
                 if label[0] == "explanation":
-                    l.setText(expl)
-                    l.setAlignment(Qt.AlignTop)
+                    l2.setText(expl)
+                    l2.setAlignment(Qt.AlignTop)
                 else:
-                    l.setText(label[0])
+                    l2.setText(label[0])
 
         self.tabWidget.setCurrentIndex(0)
 

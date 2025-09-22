@@ -4,21 +4,17 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
-import sys
-
 from qgis.core import QgsNetworkAccessManager
-from qgis.gui import QgsMessageBar
 from qgis.PyQt.QtCore import QObject, Qt, QTimer
 from qgis.PyQt.QtWidgets import QAction, QMenu, QMessageBox, QTreeWidgetItemIterator
-from qgis_shogun_editor_plugin.connection.shogunressource import ShogunRessource
 
+from ..connection.shogunressource import ShogunRessource
 from .dialog_bases.connectdlg import ConnectDialog
 from .dialog_bases.dockwidget import DockWidget
-from .editoritems import EditorItem, EditorTopItem, QgisLayerItem, ApplicationItem, LayerItem
-from ..connection.shogunressource import ShogunRessource
+from .editoritems import ApplicationItem, EditorItem, EditorTopItem, LayerItem, QgisLayerItem
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 
 class Editor(QObject):
@@ -53,12 +49,13 @@ class Editor(QObject):
          'authenticationRequired' (inherited from QNetworkAccessManager) to a
          method where a dialog in QGIS pops up asking for the users credentials
          (when working with Basic Auth). We disable the signal here as the
-         case of wrong identifacation credentials is treated separately
+         case of wrong identification credentials is treated separately
          in def: checkConnection(self)
          """
         try:
             QgsNetworkAccessManager.instance().authenticationRequired.disconnect()
-        except:
+        except Exception as e:
+            print('Error occurred: ' + str(e))
             pass
 
     def on_context_menu(self, point):
@@ -138,7 +135,8 @@ class Editor(QObject):
         if isinstance(item, QgisLayerItem):
             try:
                 self.iface.showLayerProperties(item.layer)
-            except:
+            except Exception as e:
+                print('Error occurred: ' + str(e))
                 pass
 
     def showDialog(self, item):
@@ -158,7 +156,8 @@ class Editor(QObject):
         try:
             dialog.setWindowState(Qt.WindowActive)
             dialog.activateWindow()
-        except:
+        except Exception as e:
+            print('Error occurred: ' + str(e))
             pass
 
     def setupNewConnection(self):
@@ -175,7 +174,7 @@ class Editor(QObject):
         pw = self.connectdlg.passwordIn.text()
 
         if len(url) == 0 or len(name) == 0:
-            self.showWarning(self.connectdlg, "Please fill in all necessary " "fields")
+            self.showWarning(self.connectdlg, "Please fill in all necessary fields")
             self.connectdlg.show()
             return
 
@@ -195,10 +194,10 @@ class Editor(QObject):
             self.connectdlg.show()
             return
 
-        bool = newRessource.updateData()
-        if not bool:
+        result = newRessource.updateData()
+        if not result:
             self.showWarning(
-                self.connectdlg, "Error: Could not retrieve all " "data from Shogun"
+                self.connectdlg, "Error: Could not retrieve all data from Shogun"
             )
 
         self.connectdlg.hide()
@@ -223,7 +222,7 @@ class Editor(QObject):
         self.expandEditorTree(item)
 
     def showWarning(self, parent, text):
-        warn = QMessageBox.warning(parent, "Warning", text, QMessageBox.Ok)
+        QMessageBox.warning(parent, "Warning", text, QMessageBox.Ok)
 
     def uploadStyle(self, item):
         success = item.uploadStyle()
@@ -249,9 +248,9 @@ class Editor(QObject):
                 layer.addQgsLayer(self.iface)
 
     def expandEditorTree(self, connectionItem):
-        iter = QTreeWidgetItemIterator(connectionItem)
-        val = iter.value()
+        iterator = QTreeWidgetItemIterator(connectionItem)
+        val = iterator.value()
         while val:
             val.setExpanded(True)
-            iter += 1
-            val = iter.value()
+            iterator += 1
+            val = iterator.value()

@@ -39,17 +39,14 @@ from qgis.gui import QgsGui, QgsMessageBar, QgsMessageViewer
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl, QUrlQuery
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest
-from qgis.PyQt.QtWidgets import *
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
 
 from .gui.editor import Editor
-
-# Initialize Qt resources from file resources.py
 
 # Import the code for the dialog
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
-import os.path
 
-from .gui.editor import Editor
+# Initialize Qt resources from file resources.py
 
 
 class QgisShogunEditor:
@@ -213,7 +210,7 @@ class QgisShogunEditor:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
+        if self.first_start:
             self.first_start = False
             self.dlg = QgisShogunEditorDialog()
             # search_catalogues
@@ -240,13 +237,7 @@ class QgisShogunEditor:
                     level=Qgis.Critical,
                 )
             # add link to github for help
-            help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
-            # TODO
-            # pixmap.load(help_icon_path)
-            # self.dlg.labelHelp.setPixmap(pixmap.scaled(self.dlg.labelHelp.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            # TODO: exchange the gprlp_metadata_search repository for the new target repository
-            # self.dlg.labelHelp.setText('<a href="https://github.com/mrmap-community/gprlp_metadata_search">' +
-            #                           self.tr("Help") + '</a>')
+            # help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
             # self.dlg.labelHelp.setOpenExternalLinks(True)
         # show the dialog
         self.dlg.show()
@@ -270,8 +261,8 @@ class QgisShogunEditor:
             try:
                 connection = self.editor.topitem.child(x)
                 connection.disconnectSignals()
-            except:
-                pass
+            except Exception as e:
+                print('could not disconnect signals for connection' + str(e))
 
     def openEditor(self):
         if not self.pluginIsActive:

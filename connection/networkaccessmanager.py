@@ -22,15 +22,15 @@ shogun-editor plugin by terrestris GmbH & Co. KG (https://www.terrestris.de/en/)
 """
 
 
-__author__ = "Alessandro Pasotti"
-__date__ = "August 2016"
-
 import sys
 import urllib
 
 from qgis.core import QgsAuthManager, QgsMessageLog, QgsNetworkAccessManager
 from qgis.PyQt.QtCore import QEventLoop, QUrl
 from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
+
+__author__ = "Alessandro Pasotti"
+__date__ = "August 2016"
 
 # FIXME: ignored
 DEFAULT_MAX_REDIRECTS = 4

@@ -7,9 +7,6 @@
 + see: https://github.com/boundlessgeo/qgis-geoserver-plugin
 """
 
-__author__ = "ntreff"
-__date__ = "July 2025"
-
 import os.path
 import sys
 import tempfile
@@ -18,7 +15,7 @@ import urllib.request
 import zipfile
 
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
+    QGis,
     QgsMapLayer,
     QgsRasterFileWriter,
     QgsRasterLayer,
@@ -26,17 +23,15 @@ from qgis.core import (
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-from qgis.PyQt.QtCore import QRect
-from qgis.PyQt.QtWidgets import QDialog, QLabel, QMessageBox, QPushButton
+from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.PyQt.QtXml import QDomDocument
-import urllib.request, urllib.parse
-
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
-from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
 
 from .gui.dialog_bases.addraster import AddRasterDialog
 
 PYTHON_VERSION = sys.version_info[0]
+
+__author__ = "ntreff"
+__date__ = "July 2025"
 
 """This module contains some helper functions for the shogun-editor plugin"""
 
@@ -69,7 +64,7 @@ def createLayer(layerItem, epsg):
     # if for any reason the parameter 'dataType' is not set correctly, we check the url
     # of the layer to determine if it's a WFS/WCS from the shogun-geoserver
     # (url has'shogun2-webapp') or if it's a WMS from an outer source (other url)
-    elif dataType == "unknown" or dataType == None or dataType == "":
+    elif dataType == "unknown" or dataType is None or dataType == "":
         if layerurl.startswith("/shogun2-webapp"):
             url = (
                 layerItem.ressource.baseurl.rstrip("/shogun2-webapp/") + layerurl + "?"
@@ -78,19 +73,22 @@ def createLayer(layerItem, epsg):
                 lyr = createWfsLayer(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create WFS layer: ' + str(e))
                 pass
             try:
                 lyr = createWmsLayerFromShogun(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create WMS layer for SHOGun layer: ' + str(e))
                 pass
             try:
                 lyr = createRasterLayer(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create layer: ' + str(e))
                 pass
         else:
             return createWmsLayerNormal(layerItem, layerurl, epsg)
@@ -134,7 +132,7 @@ def createRasterLayer(layerItem, url, epsg):
     elif userSelection == 2:
 
         # workaround...
-        ## TODO:  can this be made using the qgis wcs provider?
+        # TODO:  can this be made using the qgis wcs provider?
         layerName = layerItem.source["layerNames"]
 
         params = {
@@ -183,6 +181,11 @@ def createWmsLayerNormal(layerItem, url, epsg):
         return layer
     else:
         return False
+
+
+def createWmsLayer(layerItem, url, epsg):
+    # TODO
+    return False
 
 
 def createWmsLayerFromShogun(layerItem, url, epsg):
@@ -276,7 +279,7 @@ def createAndParseSld(qgisLayerItem):
     # in qgis3 layer.writeSld() also incluedes labeling in the output sld,
     # whereas in qgis2 we have to do this manually by using this module's function
     # getLabelingAsSld
-    ## TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
+    # TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
     # every labeling style, thus leading to a less beautiful viewe in the
     # shogun2-webapp styler - is this a problem?
 
@@ -343,7 +346,7 @@ def prepareLayerForUpload(layer, uploadDialog):
 
 
 def writeShapefile(layer, path):
-    ## TODO: here are some problems with the upload - also shogun-problems
+    # TODO: here are some problems with the upload - also shogun-problems
 
     writeError = QgsVectorFileWriter.writeAsVectorFormat(
         layer, path, "utf-8", layer.crs(), "ESRI Shapefile", False
@@ -397,6 +400,7 @@ def writeRasterFile(layer, filepath):
     writeError = writer.writeRaster(
         pipe, provider.xSize(), provider.ySize(), provider.extent(), provider.crs()
     )
+    print(writeError)
 
     return filepath
 
@@ -408,7 +412,8 @@ def createZipFromRaster(pathToRaster, zipfilePath, delete=False):
     if delete:
         try:
             os.remove(pathToRaster)
-        except:
+        except Exception as e:
+            print('Could not remove:' + str(e))
             pass
     return "Written successfully"
 
@@ -417,7 +422,6 @@ def createZipFromRaster(pathToRaster, zipfilePath, delete=False):
 # (c) 2016 Boundless, http://boundlessgeo.com
 # This code is licensed under the GPL 2.0 license.
 def getLabelingAsSld(layer):
-    SIZE_FACTOR = 4
     try:
         s = "<sld:TextSymbolizer><sld:Label>"
         s += (
@@ -520,5 +524,6 @@ def getLabelingAsSld(layer):
             )
         s += "</sld:TextSymbolizer>"
         return s
-    except:
-        return ""
+    except Exception as e:
+        print('Could not create SLD: ' + str(e))
+        pass
