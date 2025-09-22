@@ -1,15 +1,13 @@
 services:
     qgis:
-      image: qgis/qgis:final-3_34_13
+      image: qgis/qgis:3.44
       command: ["/bin/bash", "-c", "pip install debugpy; qgis /root/shogun_qgis_konfigurator.qgs"]
       environment:
         DISPLAY: "unix${DISPLAY}"
         RUN_IN_DOCKER: "1"
       ports:
-        - 5678:5678
+        - "5678:5678"
       volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix
         - ./qgis_plugins:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins
-        - ../shogun_qgis_configurator:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/shogun_qgis_configurator
         - ../qgis-shogun-editor:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis-shogun-editor
-        - ./shogun_qgis_konfigurator.qgs:/root/shogun_qgis_konfigurator.qgs

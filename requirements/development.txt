@@ -1,0 +1,8 @@
+flake8
+flake8-builtins
+flake8-isort
+setuptools
+pylint
+pycodestyle
+autopep8
+black

@@ -1,106 +1,119 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 (c) 2025 terrestris GmbH & Co. KG, https://www.terrestris.de/en/
 + the last method "getLabelingAsSld()" was taken
 + from the qgis geoserver explorer plugin by
 + (C) 2016 Boundless, http://boundlessgeo.com
 + see: https://github.com/boundlessgeo/qgis-geoserver-plugin
-'''
+"""
 
-__author__ = 'ntreff'
-__date__ = 'July 2025'
-
-import sys
 import os.path
-import zipfile
+import sys
 import tempfile
+import urllib.parse
+import urllib.request
+import zipfile
 
-from qgis.PyQt.QtWidgets import QMessageBox, QDialog, QLabel, QPushButton
-from qgis.PyQt.QtCore import QRect
+from qgis.core import (
+    QgsWkbTypes,
+    QgsMapLayer,
+    QgsRasterFileWriter,
+    QgsRasterLayer,
+    QgsRasterPipe,
+    QgsVectorFileWriter,
+    QgsVectorLayer,
+)
+from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.PyQt.QtXml import QDomDocument
-import urllib.request, urllib.parse
-
-from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
-from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
 
 from .gui.dialog_bases.addraster import AddRasterDialog
 
 PYTHON_VERSION = sys.version_info[0]
 
-'''This module contains some helper functions for the shogun-editor plugin'''
+__author__ = "ntreff"
+__date__ = "July 2025"
+
+"""This module contains some helper functions for the shogun-editor plugin"""
+
 
 def createLayer(layerItem, epsg):
-    #Shogun Webapp saves all layers in the following espg, therefore the
-    #variable can be static
-    layerurl = layerItem.source['url']
+    # Shogun Webapp saves all layers in the following espg, therefore the
+    # variable can be static
+    layerurl = layerItem.source["url"]
 
     dataType = layerItem.datatype
 
     # every layerItem.source should have an attribute 'dataType'
-    if dataType == 'vector' or dataType == 'Vector':
-        url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+    if dataType == "vector" or dataType == "Vector":
+        url = layerItem.ressource.baseurl.rstrip("/shogun2-webapp/") + layerurl + "?"
         return createWfsLayer(layerItem, url, epsg)
 
-    elif dataType == 'Raster':
-        url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+    elif dataType == "Raster":
+        url = layerItem.ressource.baseurl.rstrip("/shogun2-webapp/") + layerurl + "?"
         return createRasterLayer(layerItem, url, epsg)
 
-    elif dataType == 'WMS':
-        if layerurl == '/shogun2-webapp/geoserver.action':
-            url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+    elif dataType == "WMS":
+        if layerurl == "/shogun2-webapp/geoserver.action":
+            url = (
+                layerItem.ressource.baseurl.rstrip("/shogun2-webapp/") + layerurl + "?"
+            )
             return createWmsLayerFromShogun(layerItem, url)
         else:
-            return createWmsLayer(layerItem, layerurl, epsg) # TODO
+            return createWmsLayer(layerItem, layerurl, epsg)  # TODO
 
     # if for any reason the parameter 'dataType' is not set correctly, we check the url
     # of the layer to determine if it's a WFS/WCS from the shogun-geoserver
     # (url has'shogun2-webapp') or if it's a WMS from an outer source (other url)
-    elif dataType == 'unknown' or dataType == None or dataType == '':
-        if layerurl.startswith('/shogun2-webapp'):
-            url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+    elif dataType == "unknown" or dataType is None or dataType == "":
+        if layerurl.startswith("/shogun2-webapp"):
+            url = (
+                layerItem.ressource.baseurl.rstrip("/shogun2-webapp/") + layerurl + "?"
+            )
             try:
                 lyr = createWfsLayer(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create WFS layer: ' + str(e))
                 pass
             try:
-                lyr =  createWmsLayerFromShogun(layerItem, url, epsg)
+                lyr = createWmsLayerFromShogun(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create WMS layer for SHOGun layer: ' + str(e))
                 pass
             try:
-                lyr =  createRasterLayer(layerItem, url, epsg)
+                lyr = createRasterLayer(layerItem, url, epsg)
                 if lyr.isValid():
                     return lyr
-            except:
+            except Exception as e:
+                print('Could not create layer: ' + str(e))
                 pass
         else:
             return createWmsLayerNormal(layerItem, layerurl, epsg)
 
     else:
-        info = 'Layer source '+ layerurl + ' could not be loaded'
-        QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
-
+        info = "Layer source " + layerurl + " could not be loaded"
+        QMessageBox.warning(None, "Warning", info, QMessageBox.Ok)
 
 
 def createWfsLayer(layerItem, url, epsg):
     params = {
-        'service': 'WFS',
-        'srsname': epsg,
-        'typename': layerItem.source['layerNames'],
-        'typenames': layerItem.source['layerNames'],
-        'url': url + 'typename=' + layerItem.source['layerNames'],
-        'version': 'auto',
-        'request': 'GetCapabilities'
-        }
+        "service": "WFS",
+        "srsname": epsg,
+        "typename": layerItem.source["layerNames"],
+        "typenames": layerItem.source["layerNames"],
+        "url": url + "typename=" + layerItem.source["layerNames"],
+        "version": "auto",
+        "request": "GetCapabilities",
+    }
     if PYTHON_VERSION >= 3:
         url = url + urllib.parse.unquote(urllib.parse.urlencode(params))
     else:
         url = url + urllib.unquote(urllib.urlencode(params))
 
-    layer = QgsVectorLayer(url, 'SHOGUN-Layer: ' + layerItem.name, 'WFS')
+    layer = QgsVectorLayer(url, "SHOGUN-Layer: " + layerItem.name, "WFS")
     return layer
 
 
@@ -118,75 +131,79 @@ def createRasterLayer(layerItem, url, epsg):
 
     elif userSelection == 2:
 
-        #workaround...
-        ## TODO:  can this be made using the qgis wcs provider?
-        layerName = layerItem.source['layerNames']
+        # workaround...
+        # TODO:  can this be made using the qgis wcs provider?
+        layerName = layerItem.source["layerNames"]
 
         params = {
-            'request' : 'GetCoverage',
-            'version' : '2.0.1',
-            'coverageId' : layerName,
-            'namespace' : 'SHOGUN',
-            'identifier' : layerName
+            "request": "GetCoverage",
+            "version": "2.0.1",
+            "coverageId": layerName,
+            "namespace": "SHOGUN",
+            "identifier": layerName,
         }
 
-        #build the fitting url from the baseurl ('http...geoserver.action?')
-        #and the parameters
-        baseurl = url + 'service=WCS&'
+        # build the fitting url from the baseurl ('http...geoserver.action?')
+        # and the parameters
+        baseurl = url + "service=WCS&"
         if PYTHON_VERSION >= 3:
             url = baseurl + urllib.parse.urlencode(params)
         else:
             url = baseurl + urllib.urlencode(params)
 
-        #urlretrieve stores the downloaded file in /tmp/ and returns it's path:
+        # urlretrieve stores the downloaded file in /tmp/ and returns it's path:
         if PYTHON_VERSION >= 3:
             response = urllib.request.urlretrieve(url)
         else:
             response = urllib.urlretrieve(url)
         file = response[0]
-        #create a raster layer and return it
-        return QgsRasterLayer(file, 'QGIS-Layer: ' + layerItem.name)
+        # create a raster layer and return it
+        return QgsRasterLayer(file, "QGIS-Layer: " + layerItem.name)
 
 
 def createWmsLayerNormal(layerItem, url, epsg):
     params = {
-        'crs': epsg,
-        'dpiMode': '7',
-        'format': 'image/png',
-        'layers': layerItem.source['layerNames'],
-        'styles': '',
-        'url': url
-        }
-
-    if PYTHON_VERSION >= 3:
-        uri = urllib.parse.urlencode(params)
-    else:
-        uri = urllib.urlencode(params)
-
-    layer = QgsRasterLayer(uri, 'QGIS-Layer: ' + layerItem.name, 'wms')
-    if layer.isValid():
-        return layer
-    else:
-        return False
-
-
-
-def createWmsLayerFromShogun(layerItem, url, epsg):
-    layerNames = layerItem.source['layerNames']
-    params = {
-        'IgnoreGetMapUrl' : 1,
-        'crs': epsg,
-        'format': 'image/png',
-        'layers': layerNames.split(':')[1],
-        'styles': '',
-        'url': url + 'layers=' + layerNames
+        "crs": epsg,
+        "dpiMode": "7",
+        "format": "image/png",
+        "layers": layerItem.source["layerNames"],
+        "styles": "",
+        "url": url,
     }
 
     if PYTHON_VERSION >= 3:
         uri = urllib.parse.urlencode(params)
     else:
         uri = urllib.urlencode(params)
-    layer = QgsRasterLayer(uri, 'QGIS-Layer: ' + layerItem.name, 'wms')
+
+    layer = QgsRasterLayer(uri, "QGIS-Layer: " + layerItem.name, "wms")
+    if layer.isValid():
+        return layer
+    else:
+        return False
+
+
+def createWmsLayer(layerItem, url, epsg):
+    # TODO
+    return False
+
+
+def createWmsLayerFromShogun(layerItem, url, epsg):
+    layerNames = layerItem.source["layerNames"]
+    params = {
+        "IgnoreGetMapUrl": 1,
+        "crs": epsg,
+        "format": "image/png",
+        "layers": layerNames.split(":")[1],
+        "styles": "",
+        "url": url + "layers=" + layerNames,
+    }
+
+    if PYTHON_VERSION >= 3:
+        uri = urllib.parse.urlencode(params)
+    else:
+        uri = urllib.urlencode(params)
+    layer = QgsRasterLayer(uri, "QGIS-Layer: " + layerItem.name, "wms")
     if layer.isValid():
         return layer
     else:
@@ -195,144 +212,150 @@ def createWmsLayerFromShogun(layerItem, url, epsg):
 
 def createAndParseSld(qgisLayerItem):
     document = QDomDocument()
-    header = document.createProcessingInstruction( 'xml', 'version=\'1.0\' encoding=\'UTF-8\'' )
-    document.appendChild( header )
-    root = document.createElementNS( 'http://www.opengis.net/sld', 'StyledLayerDescriptor' )
-    root.setAttribute( 'version', '1.0.0' )
-    root.setAttribute( 'xmlns:ogc', 'http://www.opengis.net/ogc' )
-    root.setAttribute( 'xmlns:sld', 'http://www.opengis.net/sld' )
-    root.setAttribute( 'xmlns:gml', 'http://www.opengis.net/gml' )
-    document.appendChild( root )
+    header = document.createProcessingInstruction(
+        "xml", "version='1.0' encoding='UTF-8'"
+    )
+    document.appendChild(header)
+    root = document.createElementNS(
+        "http://www.opengis.net/sld", "StyledLayerDescriptor"
+    )
+    root.setAttribute("version", "1.0.0")
+    root.setAttribute("xmlns:ogc", "http://www.opengis.net/ogc")
+    root.setAttribute("xmlns:sld", "http://www.opengis.net/sld")
+    root.setAttribute("xmlns:gml", "http://www.opengis.net/gml")
+    document.appendChild(root)
 
-    namedLayerNode = document.createElement( 'sld:NamedLayer' )
-    root.appendChild( namedLayerNode )
+    namedLayerNode = document.createElement("sld:NamedLayer")
+    root.appendChild(namedLayerNode)
 
+    qgisLayerItem.layer.writeSld(namedLayerNode, document, "")
 
-    qgisLayerItem.layer.writeSld(namedLayerNode, document, '')
-
-    nameNode = namedLayerNode.firstChildElement('se:Name')
+    nameNode = namedLayerNode.firstChildElement("se:Name")
     oldNameText = nameNode.firstChild()
-    newname = qgisLayerItem.parentShogunLayer.source['layerNames']
+    newname = qgisLayerItem.parentShogunLayer.source["layerNames"]
     newNameText = document.createTextNode(newname)
     nameNode.appendChild(newNameText)
     nameNode.removeChild(oldNameText)
 
-    userStyleNode = namedLayerNode.firstChildElement('UserStyle')
-    userStyleNameNode = userStyleNode.firstChildElement('se:Name')
+    userStyleNode = namedLayerNode.firstChildElement("UserStyle")
+    userStyleNameNode = userStyleNode.firstChildElement("se:Name")
     userStyleNameText = userStyleNameNode.firstChild()
     userStyleNameNode.removeChild(userStyleNameText)
     userStyleNameNode.appendChild(document.createTextNode(qgisLayerItem.stylename))
 
-    titleNode = document.createElement('sld:Title')
-    title = document.createTextNode('A QGIS-Style for '+qgisLayerItem.layer.name())
+    titleNode = document.createElement("sld:Title")
+    title = document.createTextNode("A QGIS-Style for " + qgisLayerItem.layer.name())
     titleNode.appendChild(title)
     userStyleNode.appendChild(titleNode)
-    defaultNode = document.createElement('sld:IsDefault')
-    defaultNode.appendChild(document.createTextNode('1'))
+    defaultNode = document.createElement("sld:IsDefault")
+    defaultNode.appendChild(document.createTextNode("1"))
     userStyleNode.appendChild(defaultNode)
 
-    featureTypeStyleNode = userStyleNode.firstChildElement('se:FeatureTypeStyle')
-    featureTypeStyleNameNode = document.createElement('sld:Name')
-    featureTypeStyleNameNode.appendChild(document.createTextNode('name'))
+    featureTypeStyleNode = userStyleNode.firstChildElement("se:FeatureTypeStyle")
+    featureTypeStyleNameNode = document.createElement("sld:Name")
+    featureTypeStyleNameNode.appendChild(document.createTextNode("name"))
     featureTypeStyleNode.appendChild(featureTypeStyleNameNode)
 
-    rules = featureTypeStyleNode.elementsByTagName('se:Rule')
+    rules = featureTypeStyleNode.elementsByTagName("se:Rule")
     for x in range(rules.length()):
         rule = rules.at(x)
-        rule.removeChild(rule.firstChildElement('se:Description'))
+        rule.removeChild(rule.firstChildElement("se:Description"))
 
     # Check if custom icons are used in symbology and replace the text:
     # search if tag 'se:OnlineResource' is in the sld document
-    listOfGraphics = rule.toElement().elementsByTagName('se:OnlineResource')
+    listOfGraphics = rule.toElement().elementsByTagName("se:OnlineResource")
     if not listOfGraphics.isEmpty():
         for x in range(listOfGraphics.length()):
             graphicNode = listOfGraphics.at(x)
-            currentIcon = graphicNode.attributes().namedItem('xlink:href').nodeValue()
+            currentIcon = graphicNode.attributes().namedItem("xlink:href").nodeValue()
             iconUrl = qgisLayerItem.ressource.prepareIconForUpload(currentIcon)
-            graphicNode.toElement().setAttribute('xlink:href', iconUrl)
-            graphicNode.toElement().setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+            graphicNode.toElement().setAttribute("xlink:href", iconUrl)
+            graphicNode.toElement().setAttribute(
+                "xmlns:xlink", "http://www.w3.org/1999/xlink"
+            )
 
     sld = document.toString()
 
-    # in qgis3 layer.writeSld() also incluedes labeling in the output sld,
+    # in qgis3 layer.writeSld() also includes labeling in the output sld,
     # whereas in qgis2 we have to do this manually by using this module's function
     # getLabelingAsSld
-    ## TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
+    # TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
     # every labeling style, thus leading to a less beautiful viewe in the
     # shogun2-webapp styler - is this a problem?
 
     if qgisLayerItem.layer.labelsEnabled() and PYTHON_VERSION < 3:
         labelSld = getLabelingAsSld(qgisLayerItem.layer)
-        sld = sld.replace('</se:Rule>', labelSld + '</se:Rule>')
+        sld = sld.replace("</se:Rule>", labelSld + "</se:Rule>")
 
-    sld = sld.replace('ogc:Filter xmlns:ogc="http://www.opengis.net/ogc"', 'ogc:Filter')
+    sld = sld.replace('ogc:Filter xmlns:ogc="http://www.opengis.net/ogc"', "ogc:Filter")
 
     # the following fixes weird problems with the sld compability with the
     # shogun webapp
-    sld = sld.replace('<ogc:And>', '')
-    sld = sld.replace('</ogc:And>', '')
-    sld = sld.replace('<se:Name> ', '<se:Name>')
-    sld = sld.replace(' </se:Name>', '</se:Name>')
+    sld = sld.replace("<ogc:And>", "")
+    sld = sld.replace("</ogc:And>", "")
+    sld = sld.replace("<se:Name> ", "<se:Name>")
+    sld = sld.replace(" </se:Name>", "</se:Name>")
 
-    sld = sld.replace('StyledLayerDescriptor', 'sld:StyledLayerDescriptor')
-    sld = sld.replace('UserStyle', 'sld:UserStyle')
-    sld = sld.replace('se:', 'sld:')
-    sld = sld.replace('SvgParameter', 'CssParameter')
-    sld = sld.replace('\n', '')
-    sld = sld.replace('\t', '')
+    sld = sld.replace("StyledLayerDescriptor", "sld:StyledLayerDescriptor")
+    sld = sld.replace("UserStyle", "sld:UserStyle")
+    sld = sld.replace("se:", "sld:")
+    sld = sld.replace("SvgParameter", "CssParameter")
+    sld = sld.replace("\n", "")
+    sld = sld.replace("\t", "")
 
     return sld
 
 
 def prepareLayerForUpload(layer, uploadDialog):
     tmpdir = tempfile.mkdtemp()
-    zipfilePath = os.path.join(tmpdir, 'uploadzip.zip')
-    uploadDialog.log('Writing layer as shapefile...')
+    zipfilePath = os.path.join(tmpdir, "uploadzip.zip")
+    uploadDialog.log("Writing layer as shapefile...")
 
     if layer.type() == QgsMapLayer.VectorLayer:
-        if layer.source().endswith('.shp'):
+        if layer.source().endswith(".shp"):
             file = layer.source()
-            uploadDialog.log('...success\nZipping...')
-            zipSuccess = createZipFromShapefile(file, zipfilePath, delete = False)
+            uploadDialog.log("...success\nZipping...")
+            zipSuccess = createZipFromShapefile(file, zipfilePath, delete=False)
         else:
-            path = os.path.join(tmpdir, 'VectorlayerFromQGisPlugin.shp')
+            path = os.path.join(tmpdir, "VectorlayerFromQGisPlugin.shp")
             file = writeShapefile(layer, path)
             if not file:
-                uploadDialog.log('Error: Could not write the shapefile ')
+                uploadDialog.log("Error: Could not write the shapefile ")
                 return
-            uploadDialog.log('...success\nZipping...')
-            zipSuccess = createZipFromShapefile(file, zipfilePath, delete = True)
+            uploadDialog.log("...success\nZipping...")
+            zipSuccess = createZipFromShapefile(file, zipfilePath, delete=True)
 
     else:
-        if layer.providerType() == 'wms':
+        if layer.providerType() == "wms":
             return True
-        if layer.source().endswith('.tif'):
+        if layer.source().endswith(".tif"):
             rasterfile = layer.source()
-            uploadDialog.log('Zipping...')
-            zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete = False)
+            uploadDialog.log("Zipping...")
+            zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete=False)
         else:
-            path = os.path.join(tmpdir, 'RasterlayerFromQGisPlugin.tif')
-            uploadDialog.log('Creating raster file from layer...')
+            path = os.path.join(tmpdir, "RasterlayerFromQGisPlugin.tif")
+            uploadDialog.log("Creating raster file from layer...")
             rasterfile = writeRasterFile(layer, path)
-            uploadDialog.log('Zipping...')
+            uploadDialog.log("Zipping...")
             if not rasterfile:
-                uploadDialog.log('Error: Could not write the raster file')
+                uploadDialog.log("Error: Could not write the raster file")
                 return
-            zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete = True)
+            zipSuccess = createZipFromRaster(rasterfile, zipfilePath, delete=True)
     uploadDialog.log(zipSuccess)
     return zipfilePath, tmpdir
 
 
 def writeShapefile(layer, path):
-        ## TODO: here are some problems with the upload - also shogun-problems
+    # TODO: here are some problems with the upload - also shogun-problems
 
     writeError = QgsVectorFileWriter.writeAsVectorFormat(
-    layer, path,'utf-8', layer.crs(), 'ESRI Shapefile', False)
+        layer, path, "utf-8", layer.crs(), "ESRI Shapefile", False
+    )
     if PYTHON_VERSION >= 3:
-        if writeError[0] != 0: # in QGIS 3 writeAsVectorFormat returns a tuple
+        if writeError[0] != 0:  # in QGIS 3 writeAsVectorFormat returns a tuple
             return False
     else:
-        if writeError != 0:     #0 = writing success
+        if writeError != 0:  # 0 = writing success
             return False
     return path
 
@@ -340,19 +363,19 @@ def writeShapefile(layer, path):
 def createZipFromShapefile(filepath, zipfilePath, delete=False):
     # create a list with '/path/name.shp' as the first item
     shapefileParts = [filepath]
-    for extension in ['.dbf', '.shx', '.prj']:
+    for extension in [".dbf", ".shx", ".prj"]:
         newFilename = os.path.splitext(filepath)[0] + extension
         if os.path.isfile(newFilename):
             # append the further shapefile parts to the list
             shapefileParts.append(newFilename)
         else:
-            return 'Error: Could not find ' + os.path.basename(newFilename)
+            return "Error: Could not find " + os.path.basename(newFilename)
 
     # create a new zip-archive at zipfilePath
-    newZipfile = zipfile.ZipFile(zipfilePath, 'w', zipfile.ZIP_DEFLATED)
+    newZipfile = zipfile.ZipFile(zipfilePath, "w", zipfile.ZIP_DEFLATED)
     for part in shapefileParts:
         # add the parts of the shapefile to the zip-archive
-        newZipfile.write(part, arcname = os.path.basename(part))
+        newZipfile.write(part, arcname=os.path.basename(part))
         # then delete the parts because we do not need them anymore
         if delete:
             os.remove(part)
@@ -361,11 +384,11 @@ def createZipFromShapefile(filepath, zipfilePath, delete=False):
     # delete further created files belonging to the shapefile, because we
     # do not need them
     if delete:
-        for extension in ['.cpg', '.qpj']:
+        for extension in [".cpg", ".qpj"]:
             newFilename = os.path.splitext(filepath)[0] + extension
             if os.path.isfile(newFilename):
                 os.remove(newFilename)
-    return 'Written successfully'
+    return "Written successfully"
 
 
 def writeRasterFile(layer, filepath):
@@ -374,44 +397,59 @@ def writeRasterFile(layer, filepath):
     pipe.set(provider.clone())
 
     writer = QgsRasterFileWriter(filepath)
-    writeError = writer.writeRaster(pipe, provider.xSize(), provider.ySize(),
-        provider.extent(), provider.crs())
+    writeError = writer.writeRaster(
+        pipe, provider.xSize(), provider.ySize(), provider.extent(), provider.crs()
+    )
+    print(writeError)
 
     return filepath
 
 
-def createZipFromRaster(pathToRaster, zipfilePath, delete = False):
-    newZipfile = zipfile.ZipFile(zipfilePath, 'w', zipfile.ZIP_DEFLATED)
-    newZipfile.write(pathToRaster, arcname = os.path.basename(pathToRaster))
+def createZipFromRaster(pathToRaster, zipfilePath, delete=False):
+    newZipfile = zipfile.ZipFile(zipfilePath, "w", zipfile.ZIP_DEFLATED)
+    newZipfile.write(pathToRaster, arcname=os.path.basename(pathToRaster))
     newZipfile.close()
     if delete:
         try:
             os.remove(pathToRaster)
-        except:
+        except Exception as e:
+            print('Could not remove:' + str(e))
             pass
-    return 'Written successfully'
+    return "Written successfully"
 
 
-
-#the following function (we need it only when the plugin is used on qgis2):
+# the following function (we need it only when the plugin is used on qgis2):
 # (c) 2016 Boundless, http://boundlessgeo.com
 # This code is licensed under the GPL 2.0 license.
 def getLabelingAsSld(layer):
-    SIZE_FACTOR = 4
     try:
         s = "<sld:TextSymbolizer><sld:Label>"
-        s += "<ogc:PropertyName>" + layer.customProperty("labeling/fieldName") + "</ogc:PropertyName>"
+        s += (
+            "<ogc:PropertyName>"
+            + layer.customProperty("labeling/fieldName")
+            + "</ogc:PropertyName>"
+        )
         s += "</sld:Label>"
         r = int(layer.customProperty("labeling/textColorR"))
         g = int(layer.customProperty("labeling/textColorG"))
         b = int(layer.customProperty("labeling/textColorB"))
-        rgb = '#%02x%02x%02x' % (r, g, b)
-        s += '<sld:Fill><sld:CssParameter name="fill">' + rgb + "</sld:CssParameter></sld:Fill>"
+        rgb = "#%02x%02x%02x" % (r, g, b)
+        s += (
+            '<sld:Fill><sld:CssParameter name="fill">'
+            + rgb
+            + "</sld:CssParameter></sld:Fill>"
+        )
         s += "<sld:Font>"
-        s += '<sld:CssParameter name="font-family">' + layer.customProperty("labeling/fontFamily") +'</sld:CssParameter>'
-        s += ('<sld:CssParameter name="font-size">' +
-                str(int(layer.customProperty("labeling/fontSize")))
-                +'</sld:CssParameter>')
+        s += (
+            '<sld:CssParameter name="font-family">'
+            + layer.customProperty("labeling/fontFamily")
+            + "</sld:CssParameter>"
+        )
+        s += (
+            '<sld:CssParameter name="font-size">'
+            + str(int(layer.customProperty("labeling/fontSize")))
+            + "</sld:CssParameter>"
+        )
 
         italic = False
         bold = False
@@ -426,41 +464,66 @@ def getLabelingAsSld(layer):
         s += '<sld:CssParameter name="font-weight">normal</sld:CssParameter>'
         s += "</sld:Font>"
         s += "<sld:LabelPlacement>"
-        if layer.geometryType() == QGis.Point:
-            s += ("<sld:PointPlacement>"
+        if layer.geometryType() == QgsWkbTypes.PointGeometry:
+            s += (
+                "<sld:PointPlacement>"
                 "<sld:AnchorPoint>"
                 "<sld:AnchorPointX>0.5</sld:AnchorPointX>"
                 "<sld:AnchorPointY>0.5</sld:AnchorPointY>"
-                "</sld:AnchorPoint>")
+                "</sld:AnchorPoint>"
+            )
             s += "<sld:Displacement>"
-            s += "<sld:DisplacementX>" + str(int(layer.customProperty("labeling/xOffset"))) + "</sld:DisplacementX>"
-            s += "<sld:DisplacementY>" + str(int(layer.customProperty("labeling/yOffset"))) + "</sld:DisplacementY>"
+            s += (
+                "<sld:DisplacementX>"
+                + str(int(layer.customProperty("labeling/xOffset")))
+                + "</sld:DisplacementX>"
+            )
+            s += (
+                "<sld:DisplacementY>"
+                + str(int(layer.customProperty("labeling/yOffset")))
+                + "</sld:DisplacementY>"
+            )
             s += "</sld:Displacement>"
-            s += "<sld:Rotation>" + str(abs(int(layer.customProperty("labeling/angleOffset")))) + "</sld:Rotation>"
+            s += (
+                "<sld:Rotation>"
+                + str(abs(int(layer.customProperty("labeling/angleOffset"))))
+                + "</sld:Rotation>"
+            )
             s += "</sld:PointPlacement>"
-        elif layer.geometryType() == QGis.Line:
+        if layer.geometryType() == QgsWkbTypes.LineGeometry:
             mode = layer.customProperty("labeling/placement")
             if mode != 4:
-                follow = '<sld:VendorOption name="followLine">true</sld:VendorOption>' if mode == 3 else ''
-                s += '''<sld:LinePlacement>
+                follow = (
+                    '<sld:VendorOption name="followLine">true</sld:VendorOption>'
+                    if mode == 3
+                    else ""
+                )
+                s += """<sld:LinePlacement>
                         <Psld:erpendicularOffset>
                            %s
                         </sld:PerpendicularOffset>
                       </sld:LinePlacement>
-                      %s''' %  (str(layer.customProperty("labeling/dist")), follow)
+                      %s""" % (
+                    str(layer.customProperty("labeling/dist")),
+                    follow,
+                )
         s += "</sld:LabelPlacement>"
 
         if layer.customProperty("labeling/bufferDraw") == "true":
             r = int(layer.customProperty("labeling/bufferColorR"))
             g = int(layer.customProperty("labeling/bufferColorG"))
             b = int(layer.customProperty("labeling/bufferColorB"))
-            rgb = '#%02x%02x%02x' % (r, g, b)
+            rgb = "#%02x%02x%02x" % (r, g, b)
             haloSize = str(layer.customProperty("labeling/bufferSize"))
             opacity = str(float(layer.customProperty("labeling/bufferColorA")) / 255.0)
             s += "<sld:Halo><sld:Radius>%s</sld:Radius><sld:Fill>" % haloSize
-            s +=  '<sld:CssParameter name="fill">%s</sld:CssParameter>' % rgb
-            s += '<sld:CssParameter name="fill-opacity">%s</sld:CssParameter></sld:Fill></sld:Halo>' % opacity
-        s +="</sld:TextSymbolizer>"
+            s += '<sld:CssParameter name="fill">%s</sld:CssParameter>' % rgb
+            s += (
+                '<sld:CssParameter name="fill-opacity">%s</sld:CssParameter></sld:Fill></sld:Halo>'
+                % opacity
+            )
+        s += "</sld:TextSymbolizer>"
         return s
-    except:
-        return ""
+    except Exception as e:
+        print('Could not create SLD: ' + str(e))
+        pass

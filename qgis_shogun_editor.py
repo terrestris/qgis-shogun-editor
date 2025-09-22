@@ -21,22 +21,32 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import Qt, QSettings, QTranslator, QCoreApplication, QUrl
-from qgis.PyQt.QtGui import QIcon, QPixmap, QDesktopServices
-from qgis.PyQt.QtWidgets import *
-# some things for doing http requests
-from qgis.PyQt.QtCore import QUrl, QEventLoop, QUrlQuery
-from qgis.PyQt.QtNetwork import QNetworkRequest
-from qgis.core import Qgis, QgsNetworkAccessManager, QgsMessageLog, QgsSettings, QgsProviderRegistry, QgsBrowserModel
-from qgis.core import QgsProject, QgsRasterLayer
-from qgis.gui import QgsMessageBar, QgsGui, QgsMessageViewer
-# Initialize Qt resources from file resources.py
-from .resources import *
-# Import the code for the dialog
-from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
 import os.path
 
+from qgis.core import (
+    Qgis,
+    QgsBrowserModel,
+    QgsMessageLog,
+    QgsNetworkAccessManager,
+    QgsProject,
+    QgsProviderRegistry,
+    QgsRasterLayer,
+    QgsSettings,
+)
+from qgis.gui import QgsGui, QgsMessageBar, QgsMessageViewer
+
+# some things for doing http requests
+from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl, QUrlQuery
+from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
+from qgis.PyQt.QtNetwork import QNetworkRequest
+from qgis.PyQt.QtWidgets import QAction, QMessageBox
+
 from .gui.editor import Editor
+
+# Import the code for the dialog
+from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
+
+# Initialize Qt resources from file resources.py
 
 
 class QgisShogunEditor:
@@ -55,11 +65,10 @@ class QgisShogunEditor:
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
         # initialize locale
-        locale = QSettings().value('locale/userLocale')[0:2]
+        locale = QSettings().value("locale/userLocale")[0:2]
         locale_path = os.path.join(
-            self.plugin_dir,
-            'i18n',
-            'gprlp_metadata_search_{}.qm'.format(locale))
+            self.plugin_dir, "i18n", "gprlp_metadata_search_{}.qm".format(locale)
+        )
 
         if os.path.exists(locale_path):
             self.translator = QTranslator()
@@ -68,7 +77,7 @@ class QgisShogunEditor:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&Qgis Shogun Editor')
+        self.menu = self.tr("&Qgis Shogun Editor")
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -80,13 +89,11 @@ class QgisShogunEditor:
         # read actual browser model
         self.browser_model = QgsBrowserModel()
 
-        #network access
+        # network access
         self.na_manager = QgsNetworkAccessManager.instance()
 
         self.disable_ssl_verification = self.settings.value(
-            "/MetaSearch/disableSSL",
-            False,
-            bool
+            "/MetaSearch/disableSSL", False, bool
         )
         self.pluginIsActive = False
         self.editor = None
@@ -104,8 +111,7 @@ class QgisShogunEditor:
         :rtype: QString
         """
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('QgisShogunEditor', message)
-
+        return QCoreApplication.translate("QgisShogunEditor", message)
 
     def add_action(
         self,
@@ -117,7 +123,8 @@ class QgisShogunEditor:
         add_to_toolbar=True,
         status_tip=None,
         whats_this=None,
-        parent=None):
+        parent=None,
+    ):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -173,9 +180,7 @@ class QgisShogunEditor:
             self.iface.addToolBarIcon(action)
 
         if add_to_menu:
-            self.iface.addPluginToWebMenu(
-                self.menu,
-                action)
+            self.iface.addPluginToWebMenu(self.menu, action)
 
         self.actions.append(action)
 
@@ -186,20 +191,18 @@ class QgisShogunEditor:
         icon_path = os.path.join(os.path.dirname(__file__), "shogun_logo.png")
         self.add_action(
             icon_path,
-            text=self.tr(u'Qgis Shogun Editor'),
-            callback=self.openEditor, # ehemalig: self.run
-            parent=self.iface.mainWindow())
+            text=self.tr("Qgis Shogun Editor"),
+            callback=self.openEditor,  # ehemalig: self.run
+            parent=self.iface.mainWindow(),
+        )
 
         # will be set False in run()
         # self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginWebMenu(
-                self.tr(u'Qgis Shogun Editor'),
-                action)
+            self.iface.removePluginWebMenu(self.tr("Qgis Shogun Editor"), action)
             self.iface.removeToolBarIcon(action)
 
     def run(self):
@@ -207,7 +210,7 @@ class QgisShogunEditor:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
+        if self.first_start:
             self.first_start = False
             self.dlg = QgisShogunEditorDialog()
             # search_catalogues
@@ -219,20 +222,23 @@ class QgisShogunEditor:
                 # build
                 pixmap = QPixmap(logo_path)
                 # draw preview
-                self.dlg.labelLogo.setPixmap(pixmap.scaled(self.dlg.labelLogo.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.dlg.labelLogo.setPixmap(
+                    pixmap.scaled(
+                        self.dlg.labelLogo.size(),
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation,
+                    )
+                )
                 self.dlg.labelLogo.mousePressEvent = self.open_project_link
             else:
-                QgsMessageLog.logMessage("An error occured while try to open url: ", 'GeoPortal.rlp search',
-                                         level=Qgis.Critical)
+                QgsMessageLog.logMessage(
+                    "An error occured while try to open url: ",
+                    "GeoPortal.rlp search",
+                    level=Qgis.Critical,
+                )
             # add link to github for help
-            help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
-            # TODO
-            #pixmap.load(help_icon_path)
-            #self.dlg.labelHelp.setPixmap(pixmap.scaled(self.dlg.labelHelp.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            # TODO: exchange the gprlp_metadata_search repository for the new target repository
-            #self.dlg.labelHelp.setText('<a href="https://github.com/mrmap-community/gprlp_metadata_search">' +
-            #                           self.tr("Help") + '</a>')
-            #self.dlg.labelHelp.setOpenExternalLinks(True)
+            # help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
+            # self.dlg.labelHelp.setOpenExternalLinks(True)
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -255,8 +261,8 @@ class QgisShogunEditor:
             try:
                 connection = self.editor.topitem.child(x)
                 connection.disconnectSignals()
-            except:
-                pass
+            except Exception as e:
+                print('could not disconnect signals for connection' + str(e))
 
     def openEditor(self):
         if not self.pluginIsActive:
