@@ -24,7 +24,7 @@ from qgis.core import QgsApplication
 from qgis.gui import QgsMessageBar
 
 from .networkaccessmanager import NetworkAccessManager, RequestsExceptionConnectionError, RequestsException
-from qgis_shogun_editor_plugin.layerutils import createAndParseSld
+from ..layerutils import createAndParseSld
 
 
 PYTHON_VERSION = sys.version_info[0]

@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/gprlp_metadata_search" >
+    <qresource prefix="/plugins/qgis_shogun_editor" >
         <file>icon.png</file>
     </qresource>
 </RCC>

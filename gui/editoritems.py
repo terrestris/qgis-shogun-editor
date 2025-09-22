@@ -18,7 +18,7 @@ from qgis.core import QgsPointXY, QgsProject, QgsWkbTypes
 from qgis.core import QgsMapLayer, QgsProject, QgsLayerItem
 from qgis.core import QgsRectangle
 
-from shogun_qgis_configurator.layerutils import prepareLayerForUpload, createLayer
+from ..layerutils import prepareLayerForUpload, createLayer
 from .dialog_bases.applicationSettings import ApplicationSettingsDialog
 from .dialog_bases.layerSettings import LayerSettingsDialog, UploadLayerDialog
 

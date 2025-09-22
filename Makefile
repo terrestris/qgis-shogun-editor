@@ -1,12 +1,11 @@
 #/***************************************************************************
-# GeoportalRlpMetadataSearch
+# QgisShogunEditor
 #
-# GeoPortal.rlp metadata search module
 #							 -------------------
-#		begin				: 2022-02-09
+#		begin				: 2025-09
 #		git sha				: $Format:%H$
-#		copyright			: (C) 2022 by Armin Retterath
-#		email				: armin.retterath@gmail.com
+#		copyright			: (C) 2025 by terrestris
+#		email				: info@terrestris.de
 # ***************************************************************************/
 #
 #/***************************************************************************
@@ -38,15 +37,15 @@ LOCALES =
 # translation
 SOURCES = \
 	__init__.py \
-	shogun_qgis_configurator.py shogun_qgis_configurator_dialog.py
+	qgis_shogun_editor.py qgis_shogun_editor_dialog.py
 
-PLUGINNAME = shogun_qgis_configurator
+PLUGINNAME = qgis_shogun_editor
 
 PY_FILES = \
 	__init__.py \
-	shogun_qgis_configurator.py shogun_qgis_configurator_dialog.py
+	qgis_shogun_editor.py qgis_shogun_editor_dialog.py
 
-UI_FILES = shogun_qgis_configurator_dialog_base.ui
+UI_FILES = qgis_shogun_editor_dialog_base.ui
 
 EXTRAS = metadata.txt icon.png
 

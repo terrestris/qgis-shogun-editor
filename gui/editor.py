@@ -19,7 +19,7 @@ from qgis.core import QgsNetworkAccessManager
 from .dialog_bases.connectdlg import ConnectDialog
 from .dialog_bases.dockwidget import DockWidget
 from .editoritems import EditorItem, EditorTopItem, QgisLayerItem, ApplicationItem, LayerItem
-from qgis_shogun_editor_plugin.connection.shogunressource import ShogunRessource
+from ..connection.shogunressource import ShogunRessource
 
 
 class Editor(QObject):

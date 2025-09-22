@@ -33,13 +33,13 @@ from qgis.gui import QgsMessageBar, QgsGui, QgsMessageViewer
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .shogun_qgis_configurator_dialog import ShogunQgisConfiguratorDialog
+from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
 import os.path
 
 from .gui.editor import Editor
 
 
-class ShogunQgisConfigurator:
+class QgisShogunEditor:
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -209,7 +209,7 @@ class ShogunQgisConfigurator:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
-            self.dlg = ShogunQgisConfiguratorDialog()
+            self.dlg = QgisShogunEditorDialog()
             # search_catalogues
             # important - events should only be added once - otherwise we will go into trouble!
             self.dlg.pushButton.clicked.connect(lambda: self.start_search())
