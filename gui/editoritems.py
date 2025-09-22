@@ -12,12 +12,9 @@ from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QFont, QIcon
 from qgis.PyQt.QtWidgets import QMessageBox, QTreeWidgetItem
 
-from shogun_qgis_configurator.layerutils import createLayer, prepareLayerForUpload
-
-from ..layerutils import prepareLayerForUpload, createLayer
+from ..layerutils import createLayer, prepareLayerForUpload
 from .dialog_bases.applicationSettings import ApplicationSettingsDialog
 from .dialog_bases.layerSettings import LayerSettingsDialog, UploadLayerDialog
-
 
 __author__ = "ntreff"
 __date__ = "July 2025"
@@ -223,10 +220,10 @@ class ApplicationsItem(TreeItem):
 
 
 class ApplicationItem(TreeItem):
-    def __init__(self, id, name, ressource):
+    def __init__(self, _id, name, ressource):
         TreeItem.__init__(self, None, name)
         self.actiontype = "application"
-        self.id = id
+        self.id = _id
         self.name = name
         self.dlg = None
         self.ressource = ressource
@@ -514,11 +511,11 @@ class ApplicationItem(TreeItem):
             }
         return newhomeview
 
-    def getPermissionChanges(self, type):
-        if type == "User":
+    def getPermissionChanges(self, _type):
+        if _type == "User":
             permissions = self.userPermissions["data"]
             table = self.dlg.usertabel
-        elif type == "UserGroup":
+        elif _type == "UserGroup":
             permissions = self.groupPermissions["data"]
             table = self.dlg.groupstabel
         else:
@@ -622,8 +619,8 @@ class ApplicationItem(TreeItem):
                     deletedItemIds = changes["layerTree"]["deleteItems"]
                     responses = []
                     if len(deletedItemIds) > 0:
-                        for id in deletedItemIds:
-                            responses.append(self.ressource.deleteLayerTreeItem(id))
+                        for _id in deletedItemIds:
+                            responses.append(self.ressource.deleteLayerTreeItem(_id))
                     newItems = changes["layerTree"]["newItems"]
                     if len(newItems) > 0:
                         for item in newItems:
@@ -631,9 +628,9 @@ class ApplicationItem(TreeItem):
                     changeItems = changes["layerTree"]["changeItems"]
                     if len(changeItems) > 0:
                         for item in changeItems:
-                            id = item["id"]
+                            _id = item["id"]
                             responses.append(
-                                self.ressource.updateLayerTreeItem(id, item)
+                                self.ressource.updateLayerTreeItem(_id, item)
                             )
                     res = 200
                     for x in responses:
@@ -671,9 +668,7 @@ class ApplicationItem(TreeItem):
                 return
 
         else:
-            info = QMessageBox.information(
-                self.dlg, "Note", "No changes were found", QMessageBox.Ok
-            )
+            QMessageBox.information(self.dlg, "Note", "No changes were found", QMessageBox.Ok)
         self.stoppedEditing()
 
     def stoppedEditing(self):
@@ -751,7 +746,7 @@ class LayersItem(TreeItem):
         pathToZipFile, pathToTempDir = prepareLayerForUpload(layer, self.uploadDialog)
         if pathToZipFile:
             if layer.type() == QgsMapLayer.VectorLayer:
-                type = "Vector"
+                layer_type = "Vector"
             else:
                 if layer.providerType() == "wms":
                     success = self.ressource.publishWmsLayer()
@@ -768,10 +763,9 @@ class LayersItem(TreeItem):
                         )
 
                     return
-
                 else:
-                    type = "Raster"
-            success = self.ressource.uploadLayer(pathToZipFile, type)
+                    layer_type = "Raster"
+            success = self.ressource.uploadLayer(pathToZipFile, layer_type)
             if success:
                 self.uploadDialog.log(
                     "Layer " + layer.name() + " was successfully uploaded"
@@ -792,7 +786,7 @@ class LayersItem(TreeItem):
 
 
 class LayerItem(TreeItem):
-    def __init__(self, id, name, datatype, source, ressource):
+    def __init__(self, _id, name, datatype, source, ressource):
 
         # unfortunately there is no option to retrieve the layer geometry (i. e.
         # point/line/polygon for vectorlayers) just from the json object.
@@ -805,7 +799,7 @@ class LayerItem(TreeItem):
         else:
             self.icon = QgsLayerItem.iconDefault()
         TreeItem.__init__(self, self.icon, name)
-        self.id = id
+        self.id = _id
         self.actiontype = "layer"
         self.ressource = ressource
         self.dlg = None
@@ -912,11 +906,11 @@ class LayerItem(TreeItem):
                 "groups", self.groupPermissions["data"]["permissions"]
             )
 
-    def getPermissionChanges(self, type):
-        if type == "User":
+    def getPermissionChanges(self, _type):
+        if _type == "User":
             permissions = self.userPermissions["data"]
             table = self.dlg.usertabel
-        elif type == "UserGroup":
+        elif _type == "UserGroup":
             permissions = self.groupPermissions["data"]
             table = self.dlg.groupstabel
         else:
@@ -988,10 +982,10 @@ class LayerItem(TreeItem):
             if float(opacity) != self.settings["appearance"]["opacity"]:
                 changes["appearance"] = {}
                 changes["appearance"]["opacity"] = float(opacity)
-        hoverInput = self.dlg.hoverEdit.text()
-        if len(hoverInput) == 0:
-            hoverInput = None
-        if hoverInput != self.settings["appearance"]["hoverTemplate"]:
+        hover_input = self.dlg.hoverEdit.text()
+        if len(hover_input) == 0:
+            hover_input = None
+        if hover_input != self.settings["appearance"]["hoverTemplate"]:
             if "appearance" not in changes:
                 changes["appearance"] = {}
             changes["appearance"]["hoverTemplate"] = self.dlg.hoverEdit.text()

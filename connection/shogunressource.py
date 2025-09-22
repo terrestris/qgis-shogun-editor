@@ -188,31 +188,31 @@ class ShogunRessource:
         response = self.http.request(url)
         self.layers = json.loads(response[1])
 
-    def updateSingleApplication(self, id):
-        url = self.baseurl + "rest/applications/" + str(id)
+    def updateSingleApplication(self, _id):
+        url = self.baseurl + "rest/applications/" + str(_id)
         response = self.http.request(url)
         updatedApplication = json.loads(response[1])
         for app in enumerate(self.applications):
-            if app[1]["id"] == id:
+            if app[1]["id"] == _id:
                 self.layers[app[0]] = updatedApplication
         return updatedApplication
 
-    def updateSingleLayer(self, id):
-        url = self.baseurl + "rest/layers/" + str(id)
+    def updateSingleLayer(self, _id):
+        url = self.baseurl + "rest/layers/" + str(_id)
         response = self.http.request(url)
         updatedLayer = json.loads(response[1])
         for layer in enumerate(self.layers):
-            if layer[1]["id"] == id:
+            if layer[1]["id"] == _id:
                 self.layers[layer[0]] = updatedLayer
         return updatedLayer
 
     # one method for retrieving user and groups permissions (permissionType)
     # for layers or applications (objectType)
-    def getObjectPermissions(self, id, objectType, permissionType):
+    def getObjectPermissions(self, _id, objectType, permissionType):
         url = self.baseurl + "rest/entitypermission/Project" + objectType
         # objectType = 'Application' or 'Layer'
         # permissionType = 'User' or 'UserGroup'
-        url += "/" + str(id) + "/Project" + permissionType + "?"
+        url += "/" + str(_id) + "/Project" + permissionType + "?"
         response = self.http.request(url)
         return json.loads(response[1])
 
@@ -224,13 +224,13 @@ class ShogunRessource:
         response = self.http.request(url)
         self.mapconfigs = json.loads(response[1])
 
-    def getHomeviewByIds(self, mapconfigid, extentid):
+    def getHomeviewByIds(self, mapconfigid, extent_id):
         homeview = {}
         for mapcf in self.mapconfigs:
             if mapcf["id"] == mapconfigid:
                 homeview["mapconfig"] = mapcf
         for ext in self.extents:
-            if ext["id"] == extentid:
+            if ext["id"] == extent_id:
                 homeview["extent"] = ext
         return homeview
 
@@ -244,14 +244,14 @@ class ShogunRessource:
             self.updateLayers()
         return [(x["id"], x["name"], x["dataType"], x["source"]) for x in self.layers]
 
-    def getApplicationAttrsById(self, id):
+    def getApplicationAttrsById(self, _id):
         for x in self.applications:
-            if x["id"] == id:
+            if x["id"] == _id:
                 return x
 
-    def getLayerAttrsById(self, id):
+    def getLayerAttrsById(self, _id):
         for x in self.layers:
-            if x["id"] == id:
+            if x["id"] == _id:
                 return x
 
     def getGroupNames(self):
@@ -343,9 +343,9 @@ class ShogunRessource:
     def prepareIconForUpload(self, svgIconName):
         svgPaths = QgsApplication.svgPaths()
         svgIconPath = None
-        for dir in svgPaths:
-            if os.path.isfile(os.path.join(dir, svgIconName)):
-                svgIconPath = os.path.join(dir, svgIconName)
+        for _dir in svgPaths:
+            if os.path.isfile(os.path.join(_dir, svgIconName)):
+                svgIconPath = os.path.join(_dir, svgIconName)
         if svgIconPath is None or not svgIconPath.endswith("svg"):
             return False
         name = os.path.splitext(svgIconName)[0]
@@ -361,8 +361,8 @@ class ShogunRessource:
         return False
 
     # # NOTE: the following method is still not used:
-    # def downloadIconThumbnail(self, id):
-    #     iconPath = os.path.join(self.icondir, str(icon['id']) + '.png')
+    # def downloadIconThumbnail(self, _id):
+    #     iconPath = os.path.join(self.icondir, str(icon['_id']) + '.png')
     #     if os.path.isfile(iconPath):
     #         return iconPath
     #     else:
@@ -388,8 +388,7 @@ class ShogunRessource:
         if response[0]["status"] > 199 and response[0]["status"] < 210:
             # if icon upload was successfull, server returns id of the new icon
             # in it's database
-            id = json.loads(response[1])["data"]["id"]
-            return id
+            return json.loads(response[1])["data"]["id"]
         else:
             return False
 
@@ -448,7 +447,7 @@ class ShogunRessource:
             "&taskId=0&fileProjection=EPSG%3A3857&layerName=&dataType=Vector"
         )
         h = {"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
-        response = self.http.request(url, method="POST", body=data, headers=h)
+        self.http.request(url, method="POST", body=data, headers=h)
 
     def getFieldNamesFromWfs(self, layerRessourceName):
         url = (
@@ -467,25 +466,25 @@ class ShogunRessource:
                 return fieldNames
         return False
 
-    def deleteLayer(self, id):
-        url = self.baseurl + "rest/projectlayers/" + str(id)
+    def deleteLayer(self, _id):
+        url = self.baseurl + "rest/projectlayers/" + str(_id)
         response = self.http.request(url, method="DELETE")
         self.userInfo(response[0]["status"], "Layer", "deleted")
 
-    def deleteApplication(self, id):
-        url = self.baseurl + "rest/projectapps/" + str(id)
+    def deleteApplication(self, _id):
+        url = self.baseurl + "rest/projectapps/" + str(_id)
         response = self.http.request(url, method="DELETE")
         self.userInfo(response[0]["status"], "Application", "deleted")
 
-    def copyApplication(self, id, applicationName):
+    def copyApplication(self, _id, applicationName):
         url = self.baseurl + "projectapps/copy.action"
-        data = "appId=" + str(id) + "&appName=" + applicationName + "-Copy"
+        data = "appId=" + str(_id) + "&appName=" + applicationName + "-Copy"
         h = {"Content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
         response = self.http.request(url, method="POST", body=data, headers=h)
         self.userInfo(response[0]["status"], "Application", "copied")
 
-    def viewApplicationOnline(self, id):
-        url = self.baseurl + "client/?id=" + str(id)
+    def viewApplicationOnline(self, _id):
+        url = self.baseurl + "client/?id=" + str(_id)
         webbrowser.open(url)
 
     def createLayerTreeItem(self, data):
@@ -502,9 +501,9 @@ class ShogunRessource:
         response = self.http.request(url, method="PUT", body=body, headers=h)
         return response[0]["status"]
 
-    def deleteLayerTreeItem(self, layerTreeItemIdd):
-        url = self.baseurl + "rest/layertree/" + str(layerTreeItemIdd)
+    def deleteLayerTreeItem(self, layerTreeItemId):
+        url = self.baseurl + "rest/layertree/" + str(layerTreeItemId)
         h = {"Content-type": "application/json"}
-        body = json.dumps({"id": layerTreeItemIdd})
+        body = json.dumps({"id": layerTreeItemId})
         response = self.http.request(url, method="DELETE", body=body, headers=h)
         return response[0]["status"]

@@ -4,16 +4,11 @@
  This code is licensed under the GPL 2.0 license.
 """
 
-import sys
-
-from qgis.gui import QgsExtentGroupBox
-
 # we are faking the old way of QtGui, not the best style, but makes it easier
 # for switching betweeng version 2 and 3
 from qgis.PyQt import QtWidgets as QtGui
 from qgis.PyQt.QtCore import QRect, Qt
 from qgis.PyQt.QtGui import QFont
-
 
 __author__ = "ntreff"
 __date__ = "July 2025"
@@ -146,12 +141,12 @@ class LayerTreeWidget(QtGui.QTreeWidget):
             self.invisibleRootItem(), layerTree["children"]
         )
 
-        iter = QtGui.QTreeWidgetItemIterator(self)
-        val = iter.value()
+        iterator = QtGui.QTreeWidgetItemIterator(self)
+        val = iterator.value()
         while val:
             val.setExpanded(True)
-            iter += 1
-            val = iter.value()
+            iterator += 1
+            val = iterator.value()
 
     def constructTreeChildrenRecursive(self, parent, children):
         for child in children:
@@ -170,8 +165,8 @@ class LayerTreeWidget(QtGui.QTreeWidget):
         allChanges = {"newItems": [], "changeItems": [], "deleteItems": []}
         # iterate through all items in the layertree and find new or
         # changed items
-        iter = QtGui.QTreeWidgetItemIterator(self)
-        treeitem = iter.value()
+        iterator = QtGui.QTreeWidgetItemIterator(self)
+        treeitem = iterator.value()
         while treeitem:
             treeitem.updateNewAttributes()
             change = treeitem.getItemChange()
@@ -181,11 +176,11 @@ class LayerTreeWidget(QtGui.QTreeWidget):
                 else:
                     allChanges["changeItems"].append(change)
 
-            iter += 1
-            treeitem = iter.value()
+            iterator += 1
+            treeitem = iterator.value()
 
         if len(self.deletedItemIds) > 0:
-            allChanges["deleteItems"] = [x for x in self.deletedItemIds]
+            allChanges["deleteItems"] = list(self.deletedItemIds)
             self.deletedItemIds = []
 
         for x in allChanges:
@@ -225,12 +220,12 @@ class LayerTreeWidget(QtGui.QTreeWidget):
                 newItem.setCheckState(0, Qt.Checked)
             else:
                 self.changePositionInTree(dropItem)
-        iter = QtGui.QTreeWidgetItemIterator(self)
-        val = iter.value()
+        iterator = QtGui.QTreeWidgetItemIterator(self)
+        val = iterator.value()
         while val:
             val.setSelected(False)
-            iter += 1
-            val = iter.value()
+            iterator += 1
+            val = iterator.value()
 
     def changePositionInTree(self, newParentItem):
         selectedItem = self.selectedItems()[0]
@@ -563,18 +558,18 @@ class ApplicationSettingsDialog(QtGui.QDialog):
                 editable.setEnabled(b)
 
     def getAllEditables(self):
-        list = []
+        editable_list = []
         for edit in self.tabedits:
-            list.append(edit)
+            editable_list.append(edit)
         for box in self.tabboxes:
-            list.append(box)
-        for object in self.moreObjects:
-            list.append(object)
+            editable_list.append(box)
+        for obj in self.moreObjects:
+            editable_list.append(obj)
         for box in self.tools.values():
-            list.append(box)
-        list.append(self.layerlistwidget)
-        list.append(self.layertreewidget)
-        return list
+            editable_list.append(box)
+        editable_list.append(self.layerlistwidget)
+        editable_list.append(self.layertreewidget)
+        return editable_list
 
     def populateTable(self, table, usersList):
         if table == "users":

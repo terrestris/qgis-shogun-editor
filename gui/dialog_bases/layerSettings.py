@@ -5,6 +5,7 @@
 """
 
 import sys
+
 from qgis.gui import QgsMapLayerComboBox
 
 if sys.version_info[0] >= 3:
@@ -14,8 +15,8 @@ if sys.version_info[0] >= 3:
     from qgis.PyQt.QtCore import QRect, Qt
     from qgis.PyQt.QtGui import QDoubleValidator
 else:
-    from PyQt4.QtCore import QRect, Qt
     from PyQt4 import QtGui
+    from PyQt4.QtCore import QRect, Qt
 
 __author__ = "ntreff"
 __date__ = "July 2025"
@@ -170,14 +171,14 @@ class LayerSettingsDialog(QtGui.QDialog):
                 editable.setEnabled(b)
 
     def getAllEditables(self):
-        list = []
+        editable_list = []
         for edit in self.tabedits:
-            list.append(edit)
+            editable_list.append(edit)
         for box in self.tabboxes:
-            list.append(box)
-        for object in self.moreObjects:
-            list.append(object)
-        return list
+            editable_list.append(box)
+        for obj in self.moreObjects:
+            editable_list.append(obj)
+        return editable_list
 
     def deactivateHoverEditing(self):
         self.hoverBox.setHidden(True)
