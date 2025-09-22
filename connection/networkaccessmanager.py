@@ -22,35 +22,38 @@ shogun-editor plugin by terrestris GmbH & Co. KG (https://www.terrestris.de/en/)
 """
 
 
-__author__ = 'Alessandro Pasotti'
-__date__ = 'August 2016'
+__author__ = "Alessandro Pasotti"
+__date__ = "August 2016"
 
 import sys
-
-from qgis.PyQt.QtCore import QUrl
-from qgis.PyQt.QtCore import pyqtSlot, QEventLoop
-from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply
 import urllib
 
-from qgis.core import QgsNetworkAccessManager, QgsAuthManager, QgsMessageLog
+from qgis.core import QgsAuthManager, QgsMessageLog, QgsNetworkAccessManager
+from qgis.PyQt.QtCore import QEventLoop, QUrl
+from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
 
 # FIXME: ignored
 DEFAULT_MAX_REDIRECTS = 4
 
+
 class RequestsException(Exception):
     pass
+
 
 class RequestsExceptionTimeout(RequestsException):
     pass
 
+
 class RequestsExceptionConnectionError(RequestsException):
     pass
+
 
 class Map(dict):
     """
     Example:
     m = Map({'first_name': 'Eduardo'}, last_name='Pool', age=24, sports=['Soccer'])
     """
+
     def __init__(self, *args, **kwargs):
         super(Map, self).__init__(*args, **kwargs)
         for arg in args:
@@ -83,9 +86,11 @@ class Map(dict):
 class Response(Map):
     pass
 
+
 PYTHON_VERSION = sys.version_info[0]
 
-class NetworkAccessManager():
+
+class NetworkAccessManager:
     """
     This class mimicks httplib2 by using QgsNetworkAccessManager for all
     network calls.
@@ -114,8 +119,13 @@ class NetworkAccessManager():
 
     """
 
-
-    def __init__(self, authid=None, disable_ssl_certificate_validation=False, exception_class=None, debug=True):
+    def __init__(
+        self,
+        authid=None,
+        disable_ssl_certificate_validation=False,
+        exception_class=None,
+        debug=True,
+    ):
         self.disable_ssl_certificate_validation = disable_ssl_certificate_validation
         self.authid = authid
         self.reply = None
@@ -134,40 +144,55 @@ class NetworkAccessManager():
         if self.debug:
             QgsMessageLog.logMessage(msg, "NetworkAccessManager")
 
-    def request(self, url, method="GET", body=None, headers=None, redirections=DEFAULT_MAX_REDIRECTS, connection_type=None, authenticate = True):
+    def request(
+        self,
+        url,
+        method="GET",
+        body=None,
+        headers=None,
+        redirections=DEFAULT_MAX_REDIRECTS,
+        connection_type=None,
+        authenticate=True,
+    ):
         """
         Make a network request by calling QgsNetworkAccessManager.
         redirections argument is ignored and is here only for httplib2 compatibility.
         """
-        self.msg_log(u'http_call request: {0}'.format(url))
-        self.http_call_result = Response({
-            'status': 0,
-            'status_code': 0,
-            'status_message': '',
-            'text' : '',
-            'ok': False,
-            'headers': {},
-            'reason': '',
-            'exception': None,
-        })
+        self.msg_log("http_call request: {0}".format(url))
+        self.http_call_result = Response(
+            {
+                "status": 0,
+                "status_code": 0,
+                "status_message": "",
+                "text": "",
+                "ok": False,
+                "headers": {},
+                "reason": "",
+                "exception": None,
+            }
+        )
         req = QNetworkRequest()
-        req.setAttribute(QNetworkRequest.CookieSaveControlAttribute, QNetworkRequest.Manual)
-        req.setAttribute(QNetworkRequest.CookieLoadControlAttribute, QNetworkRequest.Manual)
+        req.setAttribute(
+            QNetworkRequest.CookieSaveControlAttribute, QNetworkRequest.Manual
+        )
+        req.setAttribute(
+            QNetworkRequest.CookieLoadControlAttribute, QNetworkRequest.Manual
+        )
         # Avoid double quoting form QUrl
         url = urllib.parse.unquote(url)
         req.setUrl(QUrl(url))
 
         if self.cookie is not None:
             if headers is not None:
-                headers['Cookie'] = self.cookie
+                headers["Cookie"] = self.cookie
             else:
-                headers = {'Cookie':self.cookie}
+                headers = {"Cookie": self.cookie}
 
         if self.basicauth is not None and authenticate:
             if headers is not None:
-                headers['Authorization'] = self.basicauth
+                headers["Authorization"] = self.basicauth
             else:
-                headers = {'Authorization':self.basicauth}
+                headers = {"Authorization": self.basicauth}
 
         if headers is not None:
             # This fixes a wierd error with compressed content not being correctly
@@ -177,15 +202,15 @@ class NetworkAccessManager():
             # encoding processing".
             # See: https://bugs.webkit.org/show_bug.cgi?id=63696#c1
             try:
-                del headers['Accept-Encoding']
+                del headers["Accept-Encoding"]
             except KeyError:
                 pass
             for k, v in headers.items():
                 if PYTHON_VERSION >= 3:
                     if isinstance(k, str):
-                        k = k.encode('utf-8')
+                        k = k.encode("utf-8")
                     if isinstance(v, str):
-                        v = v.encode('utf-8')
+                        v = v.encode("utf-8")
                 req.setRawHeader(k, v)
 
         if self.authid:
@@ -193,20 +218,22 @@ class NetworkAccessManager():
             QgsAuthManager.instance().updateNetworkRequest(req, self.authid)
         if self.reply is not None and self.reply.isRunning():
             self.reply.close()
-        if method.lower() == 'delete':
-            func = getattr(QgsNetworkAccessManager.instance(), 'deleteResource')
+        if method.lower() == "delete":
+            func = getattr(QgsNetworkAccessManager.instance(), "deleteResource")
         else:
             func = getattr(QgsNetworkAccessManager.instance(), method.lower())
         # Calling the server ...
         # Let's log the whole call for debugging purposes:
-        self.msg_log("Sending %s request to %s" % (method.upper(), req.url().toString()))
+        self.msg_log(
+            "Sending %s request to %s" % (method.upper(), req.url().toString())
+        )
         headers = {str(h): str(req.rawHeader(h)) for h in req.rawHeaderList()}
         for k, v in headers.items():
             self.msg_log("%s: %s" % (k, v))
-        if method.lower() in ['post', 'put']:
+        if method.lower() in ["post", "put"]:
             if PYTHON_VERSION >= 3:
                 if isinstance(body, str):
-                    body = body.encode('utf-8')
+                    body = body.encode("utf-8")
             self.reply = func(req, body)
         else:
             self.reply = func(req)
@@ -226,11 +253,17 @@ class NetworkAccessManager():
         try:
             self.el.exec_()
             # Let's log the whole response for debugging purposes:
-            self.msg_log("Got response %s %s from %s" % \
-                        (self.http_call_result.status_code,
-                         self.http_call_result.status_message,
-                         self.reply.url().toString()))
-            headers = {str(h): str(self.reply.rawHeader(h)) for h in self.reply.rawHeaderList()}
+            self.msg_log(
+                "Got response %s %s from %s"
+                % (
+                    self.http_call_result.status_code,
+                    self.http_call_result.status_message,
+                    self.reply.url().toString(),
+                )
+            )
+            headers = {
+                str(h): str(self.reply.rawHeader(h)) for h in self.reply.rawHeaderList()
+            }
             for k, v in headers.items():
                 self.msg_log("%s: %s" % (k, v))
             if len(self.http_call_result.text) < 1024:
@@ -255,17 +288,19 @@ class NetworkAccessManager():
                 raise self.exception_class(self.http_call_result.reason)
         return (self.http_call_result, self.http_call_result.text)
 
-    #@pyqtSlot()
+    # @pyqtSlot()
     def downloadProgress(self, bytesReceived, bytesTotal):
         """Keep track of the download progress"""
-        #self.msg_log("downloadProgress %s of %s ..." % (bytesReceived, bytesTotal))
+        # self.msg_log("downloadProgress %s of %s ..." % (bytesReceived, bytesTotal))
         pass
 
-    #@pyqtSlot()
+    # @pyqtSlot()
     def replyFinished(self):
         err = self.reply.error()
         httpStatus = self.reply.attribute(QNetworkRequest.HttpStatusCodeAttribute)
-        httpStatusMessage = self.reply.attribute(QNetworkRequest.HttpReasonPhraseAttribute)
+        httpStatusMessage = self.reply.attribute(
+            QNetworkRequest.HttpReasonPhraseAttribute
+        )
         self.http_call_result.status_code = httpStatus
         self.http_call_result.status = httpStatus
         self.http_call_result.status_message = httpStatusMessage
@@ -274,7 +309,8 @@ class NetworkAccessManager():
             self.http_call_result.headers[str(k).lower()] = str(v)
         if err != QNetworkReply.NoError:
             msg = "Network error #{0}: {1}".format(
-                self.reply.error(), self.reply.errorString())
+                self.reply.error(), self.reply.errorString()
+            )
             self.http_call_result.reason = msg
             self.http_call_result.ok = False
             self.msg_log(msg)
@@ -288,13 +324,13 @@ class NetworkAccessManager():
             # since Python 3 readAll() returns a PyQt5.QByteArray, we
             # want only the data
             if PYTHON_VERSION >= 3:
-                self.http_call_result.text = self.reply.readAll().data().decode('utf-8')
+                self.http_call_result.text = self.reply.readAll().data().decode("utf-8")
             else:
                 self.http_call_result.text = str(self.reply.readAll())
             self.http_call_result.ok = True
         self.reply.deleteLater()
 
-    #@pyqtSlot()
+    # @pyqtSlot()
     def sslErrors(self, reply, ssl_errors):
         """
         Handle SSL errors, logging them if debug is on and ignoring them

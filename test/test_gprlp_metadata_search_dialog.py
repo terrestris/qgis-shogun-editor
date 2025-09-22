@@ -8,17 +8,17 @@
 
 """
 
-__author__ = 'armin.retterath@gmail.com'
-__date__ = '2022-02-09'
-__copyright__ = 'Copyright 2022, Armin Retterath'
+__author__ = "armin.retterath@gmail.com"
+__date__ = "2022-02-09"
+__copyright__ = "Copyright 2022, Armin Retterath"
 
 import unittest
 
-from qgis.PyQt.QtGui import QDialogButtonBox, QDialog
+from qgis.PyQt.QtGui import QDialog, QDialogButtonBox
+from utilities import get_qgis_app
 
 from shogun_qgis_configurator_dialog import GeoportalRlpMetadataSearchDialog
 
-from utilities import get_qgis_app
 QGIS_APP = get_qgis_app()
 
 
@@ -48,8 +48,8 @@ class GeoportalRlpMetadataSearchDialogTest(unittest.TestCase):
         result = self.dialog.result()
         self.assertEqual(result, QDialog.Rejected)
 
+
 if __name__ == "__main__":
     suite = unittest.makeSuite(GeoportalRlpMetadataSearchDialogTest)
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(suite)
-
