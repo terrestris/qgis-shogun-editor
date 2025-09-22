@@ -15,7 +15,7 @@ import urllib.request
 import zipfile
 
 from qgis.core import (
-    QGis,
+    QgsWkbTypes,
     QgsMapLayer,
     QgsRasterFileWriter,
     QgsRasterLayer,
@@ -276,7 +276,7 @@ def createAndParseSld(qgisLayerItem):
 
     sld = document.toString()
 
-    # in qgis3 layer.writeSld() also incluedes labeling in the output sld,
+    # in qgis3 layer.writeSld() also includes labeling in the output sld,
     # whereas in qgis2 we have to do this manually by using this module's function
     # getLabelingAsSld
     # TODO: The automatic sld labeling from QGIS 3 produces an extra rule for
@@ -464,7 +464,7 @@ def getLabelingAsSld(layer):
         s += '<sld:CssParameter name="font-weight">normal</sld:CssParameter>'
         s += "</sld:Font>"
         s += "<sld:LabelPlacement>"
-        if layer.geometryType() == QGis.Point:
+        if layer.geometryType() == QgsWkbTypes.PointGeometry:
             s += (
                 "<sld:PointPlacement>"
                 "<sld:AnchorPoint>"
@@ -490,7 +490,7 @@ def getLabelingAsSld(layer):
                 + "</sld:Rotation>"
             )
             s += "</sld:PointPlacement>"
-        elif layer.geometryType() == QGis.Line:
+        if layer.geometryType() == QgsWkbTypes.LineGeometry:
             mode = layer.customProperty("labeling/placement")
             if mode != 4:
                 follow = (
