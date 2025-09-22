@@ -23,7 +23,7 @@ import urllib.request, urllib.parse
 from qgis.core import QgsVectorLayer, QgsRasterLayer, QgsMapLayer, QgsCoordinateReferenceSystem
 from qgis.core import QgsVectorFileWriter, QgsRasterFileWriter, QgsRasterPipe
 
-from qgis_shogun_editor_plugin.gui.dialog_bases.addraster import AddRasterDialog
+from .gui.dialog_bases.addraster import AddRasterDialog
 
 PYTHON_VERSION = sys.version_info[0]
 
