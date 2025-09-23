@@ -356,29 +356,9 @@ class QgisShogunEditor:
     def load_applications_graphql(self):
         shogun_endpoint_url = self.dlg.entryUrl.text()
         applications = self.query_applications_graphql(shogun_endpoint_url)
-        print("GraphQL Applications:", applications)
-
-    # You can connect this to a button or call it from run(), etc.
-
-    # def load_applications(self):
-    #     shogun_endpoint_url = self.dlg.entryUrl.text()
-    #     # check url
-    #     applications_url = self.check_url_for_applications(shogun_endpoint_url)
-    #     layers_url = self.check_url_for_layers(shogun_endpoint_url)
-    #     if len(applications_url) > 0 and len(layers_url) > 0:
-    #         # request (all public) applications
-    #         applications_response = self.request_public_entity(applications_url)
-    #         applications_json = json.loads(applications_response)
-    #         applicatons_content = applications_json['content'][0]
-    #         applications_layertree = applicatons_content['layerTree']
-    #         print('Applications', applications_json)
-    #         self.layer_ids = self.find_all_layer_ids(applications_layertree)
-    #
-    #         # request (all public) layers
-    #         layers_response = self.request_public_entity(layers_url)
-    #         layers_josn = json.loads(layers_response)
-    #         layers_content = layers_josn['content']
-    #
-    #         # get specific layers
-    #         result = [layer for layer in layers_content if layer["id"] == self.layer_ids[0]]
-    #         print('Layer', result)
+        if applications is not None:
+            print("GraphQL Applications:", applications)
+            self.dlg.applicationsList.clear()
+            for app in applications:
+                item_text = f"{app['name']} (ID: {app['id']})"
+                self.dlg.applicationsList.addItem(item_text)
