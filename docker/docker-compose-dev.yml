@@ -10,4 +10,5 @@ services:
       volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix
         - ./qgis_plugins:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins
-        - ../qgis-shogun-editor:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis-shogun-editor
+        - ../plugin_code:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis-shogun-editor
+        - ./shogun_qgis_konfigurator.qgs:/root/shogun_qgis_konfigurator.qgs
