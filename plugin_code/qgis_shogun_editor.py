@@ -28,18 +28,14 @@ from qgis.core import (
     QgsBrowserModel,
     QgsMessageLog,
     QgsNetworkAccessManager,
-    QgsProject,
-    QgsProviderRegistry,
-    QgsRasterLayer,
     QgsSettings,
 )
-from qgis.gui import QgsGui, QgsMessageBar, QgsMessageViewer
 
 # some things for doing http requests
-from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl, QUrlQuery
+from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest, QSslSocket
-from qgis.PyQt.QtWidgets import QAction, QMessageBox
+from qgis.PyQt.QtWidgets import QAction
 
 # Import the code for the dialog
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
