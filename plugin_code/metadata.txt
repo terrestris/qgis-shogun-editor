@@ -27,7 +27,7 @@ tags=python
 
 homepage=http://homepage
 category=Plugins
-icon=icon.png
+icon=shogun_logo.png
 # experimental flag
 experimental=True
 

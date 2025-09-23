@@ -1,10 +1,11 @@
 services:
     qgis:
       image: qgis/qgis:3.44
-      command: ["/bin/bash", "-c", "pip install debugpy; qgis /root/shogun_qgis_konfigurator.qgs"]
+      command: ["/bin/bash", "-c", "qgis /root/shogun_qgis_konfigurator.qgs"]
       environment:
         DISPLAY: "unix${DISPLAY}"
         RUN_IN_DOCKER: "1"
+        IS_DEV: "true"
       ports:
         - "5678:5678"
       volumes:

@@ -22,6 +22,8 @@
  This script initializes the plugin, making it known to QGIS.
 """
 
+from qgis.core import QgsMessageLog
+
 
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name
@@ -31,5 +33,19 @@ def classFactory(iface):  # pylint: disable=invalid-name
     :type iface: QgsInterface
     """
     #
+    import os
+    from .plugin_utils.installer import ensure_venv, SHOGUN_VENV_NAME, ensure_dependencies
     from .qgis_shogun_editor import QgisShogunEditor
+
+    project_path = os.path.dirname(__file__)
+    QgsMessageLog.logMessage(f"Project path: {project_path}", "QgisShogunEditor")
+
+    venv_path = ensure_venv(
+        os.path.join(
+            project_path,
+            SHOGUN_VENV_NAME
+        )
+    )
+    ensure_dependencies(venv_path)
+
     return QgisShogunEditor(iface)
