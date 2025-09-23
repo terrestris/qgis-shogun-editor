@@ -10,7 +10,7 @@ import sys
 import xmlrpc.client
 from optparse import OptionParser
 
-standard_library.install_aliases() # type: ignore
+standard_library.install_aliases()  # type: ignore
 
 # Configuration
 PROTOCOL = 'https'
