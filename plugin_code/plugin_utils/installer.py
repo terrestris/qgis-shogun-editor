@@ -32,8 +32,8 @@ def ensure_folder_exists(base_path: Path, folder_name: str) -> Path:
 
 
 def get_requirements_path(use_dev: bool = False) -> Path:
-    # we assume that a base.txt exists in a requirements folder
-    path = Path(Path(__file__).parent.parent, "requirements", "development.txt" if use_dev else "base.txt")
+    # we assume that a requirements.txt exists in a requirements folder
+    path = Path(Path(__file__).parent.parent, "requirements", "development.txt" if use_dev else "requirements.txt")
     assert path.exists(), f"path not found {path}"
     return path
 

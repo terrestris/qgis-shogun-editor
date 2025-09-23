@@ -35,7 +35,6 @@ def classFactory(iface):  # pylint: disable=invalid-name
     #
     import os
     from .plugin_utils.installer import ensure_venv, SHOGUN_VENV_NAME, ensure_dependencies
-    from .qgis_shogun_editor import QgisShogunEditor
 
     project_path = os.path.dirname(__file__)
     QgsMessageLog.logMessage(f"Project path: {project_path}", "QgisShogunEditor")
@@ -48,4 +47,5 @@ def classFactory(iface):  # pylint: disable=invalid-name
     )
     ensure_dependencies(venv_path)
 
+    from .qgis_shogun_editor import QgisShogunEditor
     return QgisShogunEditor(iface)
