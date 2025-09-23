@@ -46,6 +46,7 @@ from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
 
 # Initialize Qt resources from file resources.py
 
+
 class QgisShogunEditor:
     """QGIS Plugin Implementation."""
 
@@ -87,9 +88,9 @@ class QgisShogunEditor:
         # read actual browser model
         self.browser_model = QgsBrowserModel()
 
-        #network access
+        # network access
         self.na_manager = QgsNetworkAccessManager.instance()
-        self.request =QNetworkRequest()
+        self.request = QNetworkRequest()
 
         # Achtung: T/F bei Zertifikaten
         self.disable_ssl_verification = self.settings.value(
@@ -113,18 +114,17 @@ class QgisShogunEditor:
         # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
         return QCoreApplication.translate('ShogunQgisConfigurator', message)
 
-
     def add_action(
-        self,
-        icon_path,
-        text,
-        callback,
-        enabled_flag=True,
-        add_to_menu=True,
-        add_to_toolbar=True,
-        status_tip=None,
-        whats_this=None,
-        parent=None):
+            self,
+            icon_path,
+            text,
+            callback,
+            enabled_flag=True,
+            add_to_menu=True,
+            add_to_toolbar=True,
+            status_tip=None,
+            whats_this=None,
+            parent=None):
         """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
@@ -200,7 +200,6 @@ class QgisShogunEditor:
         # will be set False in run()
         self.first_start = True
 
-
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
@@ -214,7 +213,7 @@ class QgisShogunEditor:
 
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
-        if self.first_start == True:
+        if self.first_start:
             self.first_start = False
             self.dlg = QgisShogunEditorDialog()
 
@@ -228,13 +227,14 @@ class QgisShogunEditor:
                 # build
                 pixmap = QPixmap(logo_path)
                 # draw preview
-                self.dlg.labelLogo.setPixmap(pixmap.scaled(self.dlg.labelLogo.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                self.dlg.labelLogo.setPixmap(pixmap.scaled(self.dlg.labelLogo.size(),
+                                             Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 self.dlg.labelLogo.mousePressEvent = self.open_project_link
             else:
                 QgsMessageLog.logMessage("An error occured while try to open url: ", 'QgisShogunEditor',
                                          level=Qgis.Critical)
             # add link to github for help
-            help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
+            # help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -278,10 +278,10 @@ class QgisShogunEditor:
                 return input_url + 's'
             elif input_url.endswith('/'):
                 return input_url + 'layers'
-            
+
     def request_public_entity(self, url):
         self.request.setUrl(QUrl(url))
-    
+
         # no certificate
         ssl_config = self.request.sslConfiguration()
         ssl_config.setPeerVerifyMode(QSslSocket.VerifyNone)
@@ -292,10 +292,10 @@ class QgisShogunEditor:
         eventLoop = QEventLoop()
         self.reply.finished.connect(eventLoop.quit)
         eventLoop.exec_()  # blocs until finished
-    
+
         if self.reply.error() == self.reply.NoError:
             self.response = self.reply.readAll().data().decode("utf-8")
-            #print("Response:", self.response)
+            # print("Response:", self.response)
         else:
             self.response = None
             print("Error:", self.reply.errorString())
@@ -321,9 +321,9 @@ class QgisShogunEditor:
         # check url
         applications_url = self.check_url_for_applications(inputUrl)
         layers_url = self.check_url_for_layers(inputUrl)
-        if (len(applications_url) > 0 and len(layers_url) > 0):      
+        if (len(applications_url) > 0 and len(layers_url) > 0):
             # request (all public) applications
-            applications_response = self.request_public_entity(applications_url) 
+            applications_response = self.request_public_entity(applications_url)
             applications_json = json.loads(applications_response)
             applicatons_content = applications_json['content'][0]
             applications_layertree = applicatons_content['layerTree']
