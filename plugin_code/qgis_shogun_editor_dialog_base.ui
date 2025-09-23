@@ -11,9 +11,9 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Qgis-Shogun-Editor</string>
+   <string>Shogun-Qgis-Configurator</string>
   </property>
-  <widget class="QPushButton" name="pushButton">
+  <widget class="QPushButton" name="loadButton">
    <property name="geometry">
     <rect>
      <x>780</x>
@@ -65,6 +65,28 @@
     <url>
      <string>about:blank</string>
     </url>
+   </property>
+  </widget>
+  <widget class="QLineEdit" name="entryUrl">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>40</y>
+     <width>281</width>
+     <height>28</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="placeholderText">
+    <string/>
+   </property>
+   <property name="clearButtonEnabled">
+    <bool>false</bool>
    </property>
   </widget>
  </widget>
