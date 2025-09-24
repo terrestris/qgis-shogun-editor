@@ -1,8 +1,8 @@
 from typing import List, Optional
 
-from plugin_code.models.Layer import Layer
-from plugin_code.models.MutateLayer import MutateLayer
-from plugin_code.service.GraphQLClient import GraphQLClient
+from ..models.Layer import Layer
+from ..models.MutateLayer import MutateLayer
+from .GraphQLClient import GraphQLClient
 
 
 class LayerService:

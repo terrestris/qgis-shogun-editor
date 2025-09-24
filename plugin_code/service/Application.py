@@ -29,6 +29,18 @@ class ApplicationService:
         data = self.client.execute_query(query)
         return [Application.from_dict(app) for app in data.get('allApplications', [])]
 
+    def get_all_applications_simple(self) -> List[Application]:
+        query = """
+        query {
+            allApplications {
+                id
+                name
+            }
+        }
+        """
+        data = self.client.execute_query(query)
+        return [Application.from_dict(app) for app in data.get('allApplications', [])]
+
     def get_application_by_id(self, app_id: int) -> Optional[Application]:
         query = """
         query GetApplication($id: Int) {

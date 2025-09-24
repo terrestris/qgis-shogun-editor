@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from PyQt5.QtWidgets import QListWidgetItem
+
 from ..models.BaseEntity import BaseEntity
 
 
@@ -27,3 +29,8 @@ class Application(BaseEntity):
             layer_config=data.get('layerConfig'),
             tool_config=data.get('toolConfig')
         )
+
+    def get_qt_list_item(self):
+        item = QListWidgetItem(self.name or "Unnamed Application")
+        item.application_id = self._id
+        return item
