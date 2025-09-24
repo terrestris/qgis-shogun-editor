@@ -6,3 +6,4 @@ pylint
 pycodestyle
 autopep8
 black
+debugpy

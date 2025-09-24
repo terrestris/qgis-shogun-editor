@@ -1,0 +1,136 @@
+from datetime import datetime
+from typing import List, Optional
+
+from ..models.Application import Application
+from ..models.MutateApplication import MutateApplication
+from ..service.GraphQLClient import GraphQLClient
+
+
+class ApplicationService:
+    def __init__(self, client: GraphQLClient):
+        self.client = client
+
+    def get_all_applications(self) -> List[Application]:
+        query = """
+        query {
+            allApplications {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query)
+        return [Application.from_dict(app) for app in data.get('allApplications', [])]
+
+    def get_application_by_id(self, app_id: int) -> Optional[Application]:
+        query = """
+        query GetApplication($id: Int) {
+            applicationById(id: $id) {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'id': app_id})
+        app_data = data.get('applicationById')
+        return Application.from_dict(app_data) if app_data else None
+
+    def get_application_by_id_and_time(self, app_id: int, time: datetime) -> Optional[Application]:
+        query = """
+        query GetApplicationByTime($id: Int, $time: DateTime) {
+            applicationByIdAndTime(id: $id, time: $time) {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'id': app_id, 'time': time.isoformat()})
+        app_data = data.get('applicationByIdAndTime')
+        return Application.from_dict(app_data) if app_data else None
+
+    def get_applications_by_ids(self, ids: List[int]) -> List[Application]:
+        query = """
+        query GetApplicationsByIds($ids: [Int]) {
+            allApplicationsByIds(ids: $ids) {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'ids': ids})
+        return [Application.from_dict(app) for app in data.get('allApplicationsByIds', [])]
+
+    def create_application(self, application: MutateApplication) -> Application:
+        query = """
+        mutation CreateApplication($entity: MutateApplication) {
+            createApplication(entity: $entity) {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'entity': application.to_dict()})
+        return Application.from_dict(data['createApplication'])
+
+    def update_application(self, app_id: int, application: MutateApplication) -> Application:
+        query = """
+        mutation UpdateApplication($id: Int, $entity: MutateApplication) {
+            updateApplication(id: $id, entity: $entity) {
+                id
+                created
+                modified
+                name
+                stateOnly
+                clientConfig
+                layerTree
+                layerConfig
+                toolConfig
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'id': app_id, 'entity': application.to_dict()})
+        return Application.from_dict(data['updateApplication'])
+
+    def delete_application(self, app_id: int) -> bool:
+        query = """
+        mutation DeleteApplication($id: Int) {
+            deleteApplication(id: $id)
+        }
+        """
+        data = self.client.execute_query(query, {'id': app_id})
+        return data.get('deleteApplication', False)

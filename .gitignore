@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 docker/qgis_plugins/*
+plugin_code/shogun_qgis_venv/
 
 # C extensions
 *.so
