@@ -22,8 +22,8 @@
 """
 
 import os
-
 from importlib import import_module
+
 from qgis.PyQt import QtWidgets, uic
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer

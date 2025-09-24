@@ -37,9 +37,10 @@ from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest, QSslSocket
 from qgis.PyQt.QtWidgets import QAction
 
-from .graphene_util import schema
 # Import the code for the dialog
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
+from .service.Application import ApplicationService
+from .service.GraphQLClient import GraphQLClient
 
 
 class QgisShogunEditor:
@@ -213,7 +214,9 @@ class QgisShogunEditor:
             self.dlg = QgisShogunEditorDialog()
 
             self.dlg.entryUrl.setPlaceholderText('Please enter an URL')
-            self.dlg.entryUrl.setText('https://gdawasser-local-dev.intranet.terrestris.de/graphql')
+
+            # TODO remove me
+            self.dlg.entryUrl.setText('https://gdawasser-local-dev.intranet.terrestris.de/gdawasser-boot/graphql')
 
             self.dlg.loadButton.clicked.connect(lambda: self.load_applications_graphql())
 
@@ -245,36 +248,6 @@ class QgisShogunEditor:
         if event.button() == Qt.LeftButton:
             QDesktopServices.openUrl(QUrl("https://www.terrestris.de/de/"))
 
-    def check_url_for_applications(self, input_url):
-        # check url and prepare for applications request
-        # TODO: check for http and /
-        input_url = str(input_url)
-        if len(input_url) == 0:
-            print('Please enter a valid url.')
-            return
-        else:
-            if input_url.endswith('applications'):
-                return input_url
-            elif input_url.endswith('application'):
-                return input_url + 's'
-            elif input_url.endswith('/'):
-                return input_url + 'applications'
-
-    def check_url_for_layers(self, input_url):
-        # check url and prepare for layers request
-        # TODO: check for http and /
-        input_url = str(input_url)
-        if len(input_url) == 0:
-            print('Please enter a valid url.')
-            return
-        else:
-            if input_url.endswith('layers'):
-                return input_url
-            elif input_url.endswith('layer'):
-                return input_url + 's'
-            elif input_url.endswith('/'):
-                return input_url + 'layers'
-
     def request_public_entity(self, url):
         self.request.setUrl(QUrl(url))
 
@@ -285,9 +258,9 @@ class QgisShogunEditor:
 
         # request public application
         self.reply = self.na_manager.get(self.request)
-        eventLoop = QEventLoop()
-        self.reply.finished.connect(eventLoop.quit)
-        eventLoop.exec_()  # blocs until finished
+        event_loop = QEventLoop()
+        self.reply.finished.connect(event_loop.quit)
+        event_loop.exec_()  # blocs until finished
 
         if self.reply.error() == self.reply.NoError:
             self.response = self.reply.readAll().data().decode("utf-8")
@@ -312,7 +285,6 @@ class QgisShogunEditor:
 
         return layer_ids
 
-
     def sanitize_shogun_url(self, shogun_url):
         if shogun_url.endswith('/graphql'):
             return shogun_url
@@ -323,42 +295,14 @@ class QgisShogunEditor:
             shogun_url += '/graphql'
             return shogun_url
 
-
-    # Add this method to allow querying applications via GraphQL
-    def query_applications_graphql(self, shogun_url):
-        # GraphQL query string
-        query_string = '''
-        query {
-            allApplications {
-                id
-                name
-                description
-            }
-        }
-        '''
-
-        if shogun_url is None or len(shogun_url) == 0:
-            print("Please provide a valid Shogun URL.")
-            return []
-
-        shogun_url = self.sanitize_shogun_url(shogun_url)
-
-        result = schema.execute(
-            query_string,
-            context_value={'shogun_url': shogun_url}
-        )
-        if result.errors:
-            print("GraphQL errors:", result.errors)
-            return []
-        return result.data['applications']
-
     # Example usage in your code
     def load_applications_graphql(self):
         shogun_endpoint_url = self.dlg.entryUrl.text()
-        applications = self.query_applications_graphql(shogun_endpoint_url)
+        client = GraphQLClient(shogun_endpoint_url)
+
+        app_service = ApplicationService(client)
+        applications = app_service.get_all_applications()
         if applications is not None:
-            print("GraphQL Applications:", applications)
             self.dlg.applicationsList.clear()
             for app in applications:
-                item_text = f"{app['name']} (ID: {app['id']})"
-                self.dlg.applicationsList.addItem(item_text)
+                self.dlg.applicationsList.addItem(app.name)
