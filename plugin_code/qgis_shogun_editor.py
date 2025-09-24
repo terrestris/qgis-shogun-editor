@@ -280,17 +280,20 @@ class QgisShogunEditor:
     def createWmsLayerFromShogun(self, layer_src_conf, url, epsg):
         layerNames = layer_src_conf['layerNames']
 
-        request_params_config = layer_src_conf['requestParams']
-        is_transparent = request_params_config['TRANSPARENT']
-
         params = {
             'layers': layerNames,
             'styles': '',
             'format': 'image/png',
             'crs': epsg,
-            'transparent': is_transparent,
             'url': url
         }
+
+        # set transparency if present
+        try:
+            params['transparent'] = layer_src_conf['requestParams']['TRANSPARENT']
+            print('set transparent')
+        except KeyError: 
+            print('no transparency')
 
         uri = '&'.join([f"{k}={v}" for k, v in params.items()])
         layer = QgsRasterLayer(uri, layerNames, 'wms')
@@ -354,7 +357,7 @@ class QgisShogunEditor:
         #     QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)       
     
             
-    def addQgsLayer(self, currentCrs, layer_src_conf, request_url):
+    def addQgsLayer(self, currentCrs, layer_src_conf, request_url, layer_group):
         self.qgisLayers = []
         # layerutils
         layer = self.createLayer(layer_src_conf, currentCrs, request_url)
@@ -362,7 +365,9 @@ class QgisShogunEditor:
             print("Fehler beim Laden des WMS-Layers")
             return
         
-        QgsProject.instance().addMapLayer(layer)
+        QgsProject.instance().addMapLayer(layer, False) # implicit addition
+        layer_group.addLayer(layer) # eplicit addition
+
         print("WMS Layer erfolgreich geladen")
 
         # self.iface.addRasterLayer(layer, 'test')
@@ -380,16 +385,19 @@ class QgisShogunEditor:
         # layerNode = root.findLayer(layer.id())
         # layerNode.setExpanded(False)
     
-    def check_url_for_geoserver(self, input_url, layer_src_conf, app_crs, applications_client_config):
+    def check_url_for_geoserver(self, input_url, layer_src_conf, applications_client_config, layer_group):
         # check url and prepare for geoserver request
         geoserver_url = layer_src_conf['url']
-        if str(input_url).endswith('/'):
-            input_url = input_url[:-1]
-        request_url = input_url + geoserver_url
-        request_url = str(request_url).replace('http', 'https')
-        request_url = str(request_url).replace('8080', '443')
-        # request_url = str(request_url).replace('ows', 'wms')
-        self.addQgsLayer(applications_client_config['mapView']['projection'], layer_src_conf, request_url)
+        if str(geoserver_url).__contains__('https'):
+            request_url = geoserver_url
+        else:
+            if str(input_url).endswith('/'):
+                input_url = input_url[:-1]
+            request_url = input_url + geoserver_url
+            request_url = str(request_url).replace('http', 'https')
+            request_url = str(request_url).replace('8080', '443')
+            # request_url = str(request_url).replace('ows', 'wms')
+        self.addQgsLayer(applications_client_config['mapView']['projection'], layer_src_conf, request_url, layer_group)
         return
 
     def request_public_entity(self, url):
@@ -408,7 +416,7 @@ class QgisShogunEditor:
 
         if self.reply.error() == self.reply.NoError:
             self.response = self.reply.readAll().data().decode("utf-8")
-            print("Response:", self.response)
+            # print("Response:", self.response)
         else:
             self.response = None
             print("Error:", self.reply.errorString())
@@ -428,6 +436,21 @@ class QgisShogunEditor:
                 layer_ids.extend(self.find_all_layer_ids(child))
 
         return layer_ids
+    
+    def buildLayerTree(self, applications_layertree, applications_client_config, root, input_url, layers_content):
+        # print('LayerTree', applications_layertree)
+        if 'layerId' not in applications_layertree:
+            new_group = root.addGroup(applications_layertree['title']) # option: take the name of the application
+
+        if 'layerId' in applications_layertree:
+            result = [layer for layer in layers_content if layer['id'] == applications_layertree['layerId']]
+            layer_src_conf = result[0]['sourceConfig']
+            self.check_url_for_geoserver(input_url, layer_src_conf, applications_client_config, root)
+        
+        if 'children' in applications_layertree:
+            for child in applications_layertree['children']:
+                self.buildLayerTree(child, applications_client_config, new_group, input_url, layers_content)
+
 
     def load_applications(self):
         inputUrl = self.dlg.entryUrl.text()
@@ -439,79 +462,23 @@ class QgisShogunEditor:
             applications_response = self.request_public_entity(applications_url)
             applications_json = json.loads(applications_response)
             applicatons_content = applications_json['content'][0]
-            applications_layertree = applicatons_content['layerTree']
-            applications_client_config = applicatons_content['clientConfig']
-            print('Applications', applicatons_content)
-            self.layer_ids = self.find_all_layer_ids(applications_layertree)
+
+            # print('Applications', applicatons_content)
+            # self.layer_ids = self.find_all_layer_ids(applications_layertree)
 
             # request (all public) layers
             layers_response = self.request_public_entity(layers_url)
             layers_josn = json.loads(layers_response)
             layers_content = layers_josn['content']
 
-            # get specific layers
-            result = [layer for layer in layers_content if layer["id"] == self.layer_ids[0]]
-            layer_source_config = result[0]['sourceConfig']
-            print('Layer', layer_source_config)
-            self.check_url_for_geoserver(inputUrl, layer_source_config, applications_client_config['mapView']['projection'], applications_client_config)
-
-class TreeItem(QTreeWidgetItem):
-    ''' This class works as a kind of 'abstract class' from which all other
-    classes in this module inherit'''
-    def __init__(self, icon = None, text = None):
-        QTreeWidgetItem.__init__(self)
-        self.setText(0, text)
-        if icon is not None:
-            if isinstance(icon, QIcon):
-                self.setIcon(0, icon)
-            elif isinstance(icon, str):
-                iconPath = ':/plugins/shoguneditor/' + icon
-                self.setIcon(0, QIcon(iconPath))
-        self.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-        self.actiontype = None
-
-
-class QgisLayerItem(TreeItem):
-    def __init__(self, qgislayer, shogunLayerItem):
-        TreeItem.__init__(self, None, qgislayer.name())
-        self.layer = qgislayer
-        self.id = self.layer.id()
-        self.type = self.layer.type()
-        self.stylename = None
-        # make upload and download Style only available for vector layers:
-        if self.type == 0:
-            self.actiontype = 'qgisLayerReference'
-        else:
-            self.actiontype = None
-        self.parentShogunLayer = shogunLayerItem
-        # TODO self.ressource = ressource
-        QgsProject.instance().addMapLayer(self.layer)
-        if self.layer.type() == QgsMapLayer.VectorLayer:
-            self.downloadStyle()
-        self.layer.nameChanged.connect(self.on_name_changed)
-
-    def uploadStyle(self):
-        msg = 'Please confirm that you want to upload the style of the selected'
-        msg += ' layer and overwrite the style of the corresponding layer in Shogun'
-        confirm = QMessageBox.warning(None, 'Confirm', msg, QMessageBox.Cancel, QMessageBox.Ok)
-        if not confirm:
-            return
-        else:
-            return self.ressource.uploadStyle(self)
-
-    def downloadStyle(self):
-        sld, geoServerStyleName = self.ressource.downloadStyle(self)
-        self.stylename = geoServerStyleName
-        if sld is not None:
-            self.layer.loadSldStyle(sld)
-            self.layer.triggerRepaint()
-            return True
-        else:
-            return False
-
-    def uploadIcon(self):
-        self.ressource.uploadCustomIcon(self.layer.rendererV2().symbol().symbolLayer(0))
-
-    def on_name_changed(self):
-        self.setText(0, self.layer.name())
+            # load all layers
+            # for layer in layers_content:
+            #     if layer['id'] in self.layer_ids:
+            #         layer_source_config = layer['sourceConfig']
+            #         print('Load layer with id', layer['id'])
+            #         self.check_url_for_geoserver(inputUrl, layer_source_config, applications_client_config['mapView']['projection'], applications_client_config)
+            
+            # build LayerTree and load layers
+            root = QgsProject.instance().layerTreeRoot()
+            self.buildLayerTree(applicatons_content['layerTree'], applicatons_content['clientConfig'], root, inputUrl, layers_content)
 
