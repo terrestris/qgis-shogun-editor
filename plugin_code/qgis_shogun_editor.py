@@ -215,9 +215,6 @@ class QgisShogunEditor:
 
             self.dlg.entryUrl.setPlaceholderText('Please enter an URL')
 
-            # TODO remove me
-            self.dlg.entryUrl.setText('https://gdawasser-local-dev.intranet.terrestris.de/gdawasser-boot/graphql')
-
             self.dlg.loadButton.clicked.connect(lambda: self.load_applications_graphql())
 
             # add logo

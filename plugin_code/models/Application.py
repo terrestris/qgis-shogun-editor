@@ -17,7 +17,7 @@ class Application(BaseEntity):
     def from_dict(cls, data: Dict[str, Any]) -> 'Application':
         base = super().from_dict(data)
         return cls(
-            id=base.id,
+            _id=base._id,
             created=base.created,
             modified=base.modified,
             name=data.get('name'),
