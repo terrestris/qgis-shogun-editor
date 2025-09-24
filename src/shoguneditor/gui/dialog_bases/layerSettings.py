@@ -15,9 +15,13 @@ if sys.version_info[0] >= 3:
     # we are faking the old way of QtGui, not the best style, but makes it easier
     # for switching betweeng version 2 and 3
     from qgis.PyQt import QtWidgets as QtGui
+    from qgis.PyQt.QtWidgets import (QVBoxLayout, QHBoxLayout, QFormLayout, 
+                                     QGroupBox, QSpacerItem, QSizePolicy, QTextEdit)
 else:
     from PyQt4.QtCore import QRect, Qt
     from PyQt4 import QtGui
+    from PyQt4.QtGui import (QVBoxLayout, QHBoxLayout, QFormLayout, 
+                             QGroupBox, QSpacerItem, QSizePolicy, QTextEdit)
 
 from qgis.gui import QgsMapLayerComboBox
 
@@ -29,114 +33,284 @@ class LayerSettingsDialog(QtGui.QDialog):
         self.tabboxes = []              #All QCheckBoxes per tabWidget in a list
         self.moreObjects = []
         self.setupUi()
+        self.setupStyling()
 
     def setupUi(self):
-        self.resize(550, 550)
-        self.setWindowTitle('Settings')
+        self.setWindowTitle('Layer Settings')
+        self.setMinimumSize(600, 500)
+        self.resize(600, 500)
 
-        #create tabWidget that holds the tabs
-        self.tabWidget = QtGui.QTabWidget(self)
-        self.tabWidget.setGeometry(QRect(10, 20, 500, 480))
+        # Main layout
+        mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(15, 15, 15, 15)
+        mainLayout.setSpacing(10)
+
+        # Create tabWidget that holds the tabs
+        self.tabWidget = QtGui.QTabWidget()
         self.tabWidget.setObjectName('tabWidget')
-        tab0labels = [['Name', (50, 50, 56, 17)],['Layer Opacity',(50,100,80,25)], ['Hover Template', (50, 150, 120, 17)]]
-        tab1labels = [['Until now "Metadata" has to be edited in the shogun2-webapp', (50, 50, 300, 17)]]
-        tab2labels = [['explanation', (50, 50, 400, 200)]]
-        tab3labels = [['Users', (100, 10, 50, 20)], ['Groups', (320, 10, 50, 20)]]
-        tabwidgets = [['General', tab0labels], ['Metadata', tab1labels], ['Style', tab2labels], ['Permissions', tab3labels]]
+        
+        # Setup tabs
+        self.setupGeneralTab()
+        self.setupMetadataTab()
+        self.setupStyleTab()
+        self.setupPermissionsTab()
+        
+        mainLayout.addWidget(self.tabWidget)
+        
+        # Button layout
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addStretch()
+        
+        cancelButton = QtGui.QPushButton('Cancel')
+        cancelButton.setMinimumSize(80, 35)
+        okButton = QtGui.QPushButton('OK')
+        okButton.setMinimumSize(80, 35)
+        okButton.setDefault(True)
+        
+        buttonLayout.addWidget(cancelButton)
+        buttonLayout.addSpacing(10)
+        buttonLayout.addWidget(okButton)
+        
+        mainLayout.addLayout(buttonLayout)
 
-        expl = 'To edit the style of layer in shogun, first add the layer to QGIS.\n'
-        expl += 'Then style the layer via the QGIS layer properties.\nWhen finished, '
-        expl += 'you can upload the current layer style \nto this layer in Shogun by '
-        expl += 'right-clicking it in \nthe Shogun Editor menu'
-
-        #first set the labes for all tabwwidgets in a loop:
-        for tab in tabwidgets:
-            t = QtGui.QWidget()
-            t.setObjectName(tab[0])
-            self.tabs.append(t)
-            self.tabWidget.addTab(t, tab[0])
-
-            for label in tab[1]:
-                l = QtGui.QLabel(t)
-                l.setGeometry(QRect(label[1][0],label[1][1],label[1][2],label[1][3]))
-                if label[0] == 'explanation':
-                    l.setText(expl)
-                    l.setAlignment(Qt.AlignTop)
-                else:
-                    l.setText(label[0])
-
-
-        self.tabWidget.setCurrentIndex(0)
-
-
-        #then populate the specific tabwidgets with other QObjects:
-        #tab 0 = 'General':
-        self.nameEdit = QtGui.QLineEdit(self.tabs[0])
-        self.nameEdit.setGeometry(QRect(180, 40, 113, 27))
+    def setupGeneralTab(self):
+        """Setup the General tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('General')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'General')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Basic Information Group
+        basicGroup = QGroupBox("Layer Information")
+        basicLayout = QFormLayout(basicGroup)
+        basicLayout.setSpacing(10)
+        basicLayout.setLabelAlignment(Qt.AlignRight)
+        
+        self.nameEdit = QtGui.QLineEdit()
+        self.nameEdit.setToolTip("Enter the layer name")
+        basicLayout.addRow("Name:", self.nameEdit)
         self.tabedits.append(self.nameEdit)
-
-        self.sliderEdit = QtGui.QLineEdit(self.tabs[0])
-        self.sliderEdit.setGeometry(QRect(400, 90, 30, 23))
+        
+        # Layer Opacity with slider-style input
+        opacityLayout = QHBoxLayout()
+        self.sliderEdit = QtGui.QLineEdit()
         self.sliderEdit.setInputMask('9.99')
+        self.sliderEdit.setMaximumWidth(60)
+        self.sliderEdit.setToolTip("Layer opacity (0.00 to 1.00)")
         if sys.version_info[0] >= 3:
             validator = QDoubleValidator(-0.01, 1.01, 2)
         else:
             validator = QtGui.QDoubleValidator(-0.01, 1.01, 2)
         self.sliderEdit.setValidator(validator)
         self.tabedits.append(self.sliderEdit)
+        
+        opacityLayout.addWidget(self.sliderEdit)
+        opacityLayout.addWidget(QtGui.QLabel("(0.00 = transparent, 1.00 = opaque)"))
+        opacityLayout.addStretch()
+        basicLayout.addRow("Layer Opacity:", opacityLayout)
+        
+        # Hover Template
+        hoverLayout = QHBoxLayout()
+        self.hoverEdit = QtGui.QLineEdit()
+        self.hoverEdit.setToolTip("Enter hover template field name")
+        hoverLayout.addWidget(self.hoverEdit)
+        
+        self.hoverBox = QtGui.QComboBox()
+        self.hoverBox.setToolTip("Select from available fields")
+        hoverLayout.addWidget(self.hoverBox)
+        
+        self.hoverAddButton = QtGui.QPushButton('Add')
+        self.hoverAddButton.setMaximumWidth(60)
+        self.hoverAddButton.setToolTip("Add the selected field to hover template")
+        hoverLayout.addWidget(self.hoverAddButton)
+        
+        basicLayout.addRow("Hover Template:", hoverLayout)
+        
+        self.tabedits.extend([self.hoverEdit, self.hoverBox, self.hoverAddButton])
+        
+        layout.addWidget(basicGroup)
+        layout.addStretch()
 
-        self.hoverEdit = QtGui.QLineEdit(self.tabs[0])
-        self.hoverEdit.setGeometry(QRect(180, 140, 113,27))
-        self.tabedits.append(self.hoverEdit)
+    def setupMetadataTab(self):
+        """Setup the Metadata tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Metadata')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Metadata')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Info message
+        infoGroup = QGroupBox("Metadata Information")
+        infoLayout = QVBoxLayout(infoGroup)
+        
+        infoLabel = QtGui.QLabel('Until now "Metadata" has to be edited in the shogun2-webapp')
+        infoLabel.setWordWrap(True)
+        infoLabel.setStyleSheet("color: #666; font-style: italic; padding: 10px;")
+        infoLayout.addWidget(infoLabel)
+        
+        layout.addWidget(infoGroup)
+        layout.addStretch()
 
-        self.hoverBox = QtGui.QComboBox(self.tabs[0])
-        self.hoverBox.setGeometry(QRect(320, 140, 80, 27))
-        self.tabedits.append(self.hoverBox)
+    def setupStyleTab(self):
+        """Setup the Style tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Style')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Style')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Style Instructions Group
+        styleGroup = QGroupBox("Style Instructions")
+        styleLayout = QVBoxLayout(styleGroup)
+        
+        explanation = 'To edit the style of layer in shogun, first add the layer to QGIS.\n\n'
+        explanation += 'Then style the layer via the QGIS layer properties.\n\n'
+        explanation += 'When finished, you can upload the current layer style to this layer in Shogun by '
+        explanation += 'right-clicking it in the Shogun Editor menu'
+        
+        explanationLabel = QtGui.QLabel(explanation)
+        explanationLabel.setWordWrap(True)
+        explanationLabel.setAlignment(Qt.AlignTop)
+        explanationLabel.setStyleSheet("""
+            QLabel {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 15px;
+                line-height: 1.4;
+            }
+        """)
+        styleLayout.addWidget(explanationLabel)
+        
+        layout.addWidget(styleGroup)
+        layout.addStretch()
 
-        self.hoverAddButton = QtGui.QPushButton(self.tabs[0])
-        self.hoverAddButton.setGeometry(QRect(410, 140, 30, 27))
-        self.hoverAddButton.setText('Add')
-        self.tabedits.append(self.hoverAddButton)
+    def setupPermissionsTab(self):
+        """Setup the Permissions tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Permissions')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Permissions')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Header
+        headerLayout = QHBoxLayout()
+        
+        usersLabel = QtGui.QLabel("Users")
+        usersLabel.setStyleSheet("font-weight: bold; font-size: 14px;")
+        usersLabel.setAlignment(Qt.AlignCenter)
+        
+        groupsLabel = QtGui.QLabel("Groups")
+        groupsLabel.setStyleSheet("font-weight: bold; font-size: 14px;")
+        groupsLabel.setAlignment(Qt.AlignCenter)
+        
+        headerLayout.addWidget(usersLabel)
+        headerLayout.addWidget(groupsLabel)
+        
+        layout.addLayout(headerLayout)
+        
+        # Tables layout
+        tablesLayout = QHBoxLayout()
+        
+        self.usertabel = QtGui.QTableWidget()
+        self.grouptabel = QtGui.QTableWidget()
+        
+        tablesLayout.addWidget(self.usertabel)
+        tablesLayout.addWidget(self.grouptabel)
+        
+        layout.addLayout(tablesLayout)
 
-        self.slider = QtGui.QSlider(self.tabs[0])
-        self.slider.setGeometry(QRect(180, 90, 160, 18))
-        self.slider.setOrientation(Qt.Horizontal)
-        self.slider.setMaximum(100)
-        self.slider.setMinimum(-1)
-        self.slider.setEnabled(False)
-        self.moreObjects.append(self.slider)
-        self.slider.valueChanged.connect(lambda: self.sliderEdit.setText(str(float(self.slider.value())/100)))
-        self.sliderEdit.textEdited.connect(lambda: self.slider.setValue(int(float(self.sliderEdit.text())*100)))
-
-        self.hoverAddButton.clicked.connect(self.addHoverAttribute)
-
-
-
-        #tab 3 = 'Permissions':
-        self.usertabel = QtGui.QTableWidget(self.tabs[3])
-        self.usertabel.setGeometry(QRect(10, 30, 230, 300))
-        self.usertabel.setColumnCount(3)
-        self.usertabel.setHorizontalHeaderLabels(['Read', 'Update', 'Delete'])
-        self.moreObjects.append(self.usertabel)
-
-        self.groupstabel = QtGui.QTableWidget(self.tabs[3])
-        self.groupstabel.setGeometry(QRect(250, 30, 230, 300))
-        self.groupstabel.setColumnCount(3)
-        self.groupstabel.setHorizontalHeaderLabels(['Read', 'Update', 'Delete'])
-        self.moreObjects.append(self.groupstabel)
-
-
-        #create Gui surrounding the tabs
-        self.editCheckBox = QtGui.QCheckBox(self)
-        self.editCheckBox.setGeometry(QRect(420, 10, 50, 17))
-        self.editCheckBox.setText('Edit')
-
-        self.pushButtonOk = QtGui.QPushButton(self)
-        self.pushButtonOk.setGeometry(QRect(420, 500, 85, 27))
-        self.pushButtonCancel = QtGui.QPushButton(self)
-        self.pushButtonCancel.setGeometry(QRect(320, 500, 85, 27))
-        self.pushButtonCancel.setText('Cancel')
-
+    def setupStyling(self):
+        """Apply modern styling to the dialog"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+                font-family: "Segoe UI", Arial, sans-serif;
+            }
+            QTabWidget::pane {
+                border: 1px solid #ccc;
+                background-color: white;
+                border-radius: 4px;
+            }
+            QTabWidget::tab-bar {
+                left: 5px;
+            }
+            QTabBar::tab {
+                background-color: #e1e1e1;
+                border: 1px solid #ccc;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: white;
+                border-bottom: 1px solid white;
+            }
+            QTabBar::tab:hover {
+                background-color: #d4edda;
+            }
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #cccccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+            QLineEdit, QComboBox {
+                padding: 6px;
+                border: 2px solid #ddd;
+                border-radius: 4px;
+                font-size: 12px;
+                background-color: white;
+                min-width: 80px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border-color: #0066cc;
+            }
+            QPushButton {
+                background-color: #0066cc;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 60px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:pressed {
+                background-color: #004494;
+            }
+            QTableWidget {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+                alternate-background-color: #f8f9fa;
+            }
+        """)
 
     def addHoverAttribute(self):
         attribute = self.hoverBox.currentText()

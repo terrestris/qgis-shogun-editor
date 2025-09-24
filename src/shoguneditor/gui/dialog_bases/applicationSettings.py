@@ -15,10 +15,14 @@ if sys.version_info[0] >= 3:
     # for switching betweeng version 2 and 3
     from qgis.PyQt import QtWidgets as QtGui
     from qgis.PyQt.QtGui import QFont
+    from qgis.PyQt.QtWidgets import (QVBoxLayout, QHBoxLayout, QFormLayout, 
+                                     QGroupBox, QSpacerItem, QSizePolicy)
 else:
     from PyQt4.QtCore import QRect, Qt
     from PyQt4 import QtGui
     from PyQt4.QtGui import QFont
+    from PyQt4.QtGui import (QVBoxLayout, QHBoxLayout, QFormLayout, 
+                             QGroupBox, QSpacerItem, QSizePolicy)
 
 from qgis.gui import QgsExtentGroupBox
 
@@ -347,186 +351,434 @@ class ApplicationSettingsDialog(QtGui.QDialog):
         self.tabboxes = []              #All QCheckBoxes per tabWidget in a list
         self.moreObjects = []
         self.setupUi()
+        self.setupStyling()
 
     def setupUi(self):
-        self.resize(550, 550)
-        self.setWindowTitle('Settings')
+        self.setWindowTitle('Application Settings')
+        self.setMinimumSize(600, 600)
+        self.resize(600, 600)
 
-        #create tabWidget that holds the tabs
-        self.tabWidget = QtGui.QTabWidget(self)
-        self.tabWidget.setGeometry(QRect(10, 20, 500, 480))
+        # Main layout
+        mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(15, 15, 15, 15)
+        mainLayout.setSpacing(10)
+
+        # Create tabWidget that holds the tabs
+        self.tabWidget = QtGui.QTabWidget()
         self.tabWidget.setObjectName('tabWidget')
-        tab0labels=[['Name',(50, 50, 56, 17)], ['Description', (50,100,70,25)], ['Language', (50, 150, 56, 17)]]
-        tab1labels = [['Which tools/ buttons shall be activated in the application:', (50, 25, 56, 17)]]
-        tab2labels = [['Center:', (50, 50, 70, 17)], ['X:', (160, 53, 10, 10)], ['Y:', (320, 53, 10, 10)], ['Zoom:', (50, 100, 70, 17)],
-                        ['Extent:', (50, 363, 70, 17)], ['MinX:', (132, 367, 40, 17)], ['MinY:', (222, 327, 40, 17)], ['MaxX:', (306, 367, 40, 17)],
-                        ['MaxY:', (222, 407, 40, 17)]]
-        tab3labels = [['All Layers', (90, 40, 80, 30)], ['Layer Tree', (325, 40, 80, 30)]]
-        tab4labels = [['Users', (100, 10, 50, 20)], ['Groups', (320, 10, 50, 20)]]
-        tabwidgets = [['General', tab0labels], ['Tools', tab1labels], ['Homeview', tab2labels], ['Layer', tab3labels], ['Permissions', tab4labels]]
+        
+        # Setup tabs
+        self.setupGeneralTab()
+        self.setupToolsTab()
+        self.setupHomeviewTab()
+        self.setupLayerTab()
+        self.setupPermissionsTab()
+        
+        mainLayout.addWidget(self.tabWidget)
+        
+        # Button layout
+        buttonLayout = QHBoxLayout()
+        buttonLayout.addStretch()
+        
+        cancelButton = QtGui.QPushButton('Cancel')
+        cancelButton.setMinimumSize(80, 35)
+        okButton = QtGui.QPushButton('OK')
+        okButton.setMinimumSize(80, 35)
+        okButton.setDefault(True)
+        
+        buttonLayout.addWidget(cancelButton)
+        buttonLayout.addSpacing(10)
+        buttonLayout.addWidget(okButton)
+        
+        mainLayout.addLayout(buttonLayout)
 
-        #first set the labes for all tabwwidgets in a loop:
-        for tab in tabwidgets:
-            t = QtGui.QWidget()
-            t.setObjectName(tab[0])
-            self.tabs.append(t)
-            self.tabWidget.addTab(t, tab[0])
-
-            for label in tab[1]:
-                l = QtGui.QLabel(t)
-                l.setText(label[0])
-                l.setGeometry(QRect(label[1][0],label[1][1],label[1][2],label[1][3]))
-                if (tab[0] == 'Layer'):
-                    font = QFont('Arial',12)
-                    font.setBold(True)
-                    l.setFont(font)
-
-
-        self.tabWidget.setCurrentIndex(0)
-
-        #then populate the specific tabwidgets with other QObjects:
-        #tab 0 = 'General':
-        self.nameEdit = QtGui.QLineEdit(self.tabs[0])
-        self.nameEdit.setGeometry(QRect(250, 40, 150, 27))
+    def setupGeneralTab(self):
+        """Setup the General tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('General')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'General')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Basic Information Group
+        basicGroup = QGroupBox("Basic Information")
+        basicLayout = QFormLayout(basicGroup)
+        basicLayout.setSpacing(10)
+        basicLayout.setLabelAlignment(Qt.AlignRight)
+        
+        self.nameEdit = QtGui.QLineEdit()
+        self.nameEdit.setToolTip("Enter the application name")
+        basicLayout.addRow("Name:", self.nameEdit)
         self.tabedits.append(self.nameEdit)
-
-        self.descriptionEdit = QtGui.QLineEdit(self.tabs[0])
-        self.descriptionEdit.setGeometry(QRect(250, 90, 150,27))
+        
+        self.descriptionEdit = QtGui.QLineEdit()
+        self.descriptionEdit.setToolTip("Enter a description for this application")
+        basicLayout.addRow("Description:", self.descriptionEdit)
         self.tabedits.append(self.descriptionEdit)
-
-        self.languageBox = QtGui.QComboBox(self.tabs[0])
-        self.languageBox.setGeometry(QRect(250, 140, 113,27))
-        self.languageBox.addItems(['en','de'])
+        
+        self.languageBox = QtGui.QComboBox()
+        self.languageBox.addItems(['en', 'de'])
+        self.languageBox.setToolTip("Select the application language")
+        basicLayout.addRow("Language:", self.languageBox)
         self.tabedits.append(self.languageBox)
-
-        self.boxPublic = QtGui.QCheckBox(self.tabs[0])
-        self.boxPublic.setGeometry(QRect(250, 180, 80, 17))
-        self.boxPublic.setText('Public')
+        
+        layout.addWidget(basicGroup)
+        
+        # Settings Group
+        settingsGroup = QGroupBox("Application Settings")
+        settingsLayout = QVBoxLayout(settingsGroup)
+        settingsLayout.setSpacing(10)
+        
+        self.boxPublic = QtGui.QCheckBox('Public')
+        self.boxPublic.setToolTip("Make this application publicly accessible")
+        settingsLayout.addWidget(self.boxPublic)
         self.tabboxes.append(self.boxPublic)
-
-        self.boxActive = QtGui.QCheckBox(self.tabs[0])
-        self.boxActive.setGeometry(QRect(250, 230, 80, 17))
-        self.boxActive.setText('Active')
+        
+        self.boxActive = QtGui.QCheckBox('Active')
+        self.boxActive.setToolTip("Enable this application")
+        settingsLayout.addWidget(self.boxActive)
         self.tabboxes.append(self.boxActive)
+        
+        layout.addWidget(settingsGroup)
+        layout.addStretch()
 
-
-        #tab 1 = 'Tools':
+    def setupToolsTab(self):
+        """Setup the Tools tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Tools')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Tools')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Tools Group
+        toolsGroup = QGroupBox("Available Tools")
+        toolsGroup.setToolTip("Select which tools/buttons to activate in the application")
+        toolsLayout = QVBoxLayout(toolsGroup)
+        toolsLayout.setSpacing(8)
+        
         toollist = ['Zoom in button', 'Zoom out button', 'Zoom to extent button', 'Step back to previous extent button',
-                'Step forward to next extent button', 'Activate hover-select tool', 'Print button', 'Show measure tools button',
-                'Show redlining tools button', 'Show workstate tools button', 'Show addwms tools button', 'Show meta toolbar button']
-        y = 50
+                    'Step forward to next extent button', 'Activate hover-select tool', 'Print button', 'Show measure tools button',
+                    'Show redlining tools button', 'Show workstate tools button', 'Show addwms tools button', 'Show meta toolbar button']
+        
         self.tools = {}
-        # a dictonary with toolbutton id as key and reference to the QCheckBox
-        # as value, i.e.: {58: -Reference to QCheckBox Object-}
         tcount = 57
         for tool in toollist:
-            t = QtGui.QCheckBox(self.tabs[1])
-            t.setGeometry(QRect(60, y, 180, 17))
-            t.setText(tool)
-            self.tools[tcount] = t
-            y += 30
+            checkbox = QtGui.QCheckBox(tool)
+            checkbox.setToolTip(f"Enable/disable {tool.lower()}")
+            toolsLayout.addWidget(checkbox)
+            self.tools[tcount] = checkbox
             tcount += 1
+            
+        layout.addWidget(toolsGroup)
+        layout.addStretch()
 
-
-        #tab 2 = 'Homeview':
-        self.homeviewCenterEditX = QtGui.QLineEdit(self.tabs[2])
-        self.homeviewCenterEditX.setGeometry(QRect(170, 50, 125, 25))
-        self.tabedits.append(self.homeviewCenterEditX)
-        self.homeviewCenterEditY = QtGui.QLineEdit(self.tabs[2])
-        self.homeviewCenterEditY.setGeometry(QRect(330, 50, 125, 25))
-        self.tabedits.append(self.homeviewCenterEditY)
-
-        self.homeviewZoomBox = QtGui.QSpinBox(self.tabs[2])
-        self.homeviewZoomBox.setGeometry(QRect(170, 100, 40, 25))
-        self.moreObjects.append(self.homeviewZoomBox)
-
+    def setupHomeviewTab(self):
+        """Setup the Homeview tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Homeview')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Homeview')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Center Group
+        centerGroup = QGroupBox("Map Center")
+        centerLayout = QFormLayout(centerGroup)
+        centerLayout.setSpacing(10)
+        
+        # Center coordinates in a horizontal layout
+        coordLayout = QHBoxLayout()
+        
+        xLabel = QtGui.QLabel("X:")
+        self.xEdit = QtGui.QLineEdit()
+        self.xEdit.setToolTip("X coordinate for map center")
+        
+        yLabel = QtGui.QLabel("Y:")
+        self.yEdit = QtGui.QLineEdit()
+        self.yEdit.setToolTip("Y coordinate for map center")
+        
+        coordLayout.addWidget(xLabel)
+        coordLayout.addWidget(self.xEdit)
+        coordLayout.addSpacing(20)
+        coordLayout.addWidget(yLabel)
+        coordLayout.addWidget(self.yEdit)
+        coordLayout.addStretch()
+        
+        centerLayout.addRow("Coordinates:", coordLayout)
+        
+        # Zoom
+        self.zoomEdit = QtGui.QLineEdit()
+        self.zoomEdit.setToolTip("Initial zoom level")
+        centerLayout.addRow("Zoom:", self.zoomEdit)
+        
+        layout.addWidget(centerGroup)
+        
+        # Extent Group
+        extentGroup = QGroupBox("Map Extent")
+        extentLayout = QVBoxLayout(extentGroup)
+        
+        # Create extent edits
         self.extentEdits = []
-        minX = QtGui.QLineEdit(self.tabs[2])
-        minX.setGeometry(175, 360, 120, 25)
+        extentFormLayout = QFormLayout()
+        
+        extentCoordLayout = QHBoxLayout()
+        
+        minXLabel = QtGui.QLabel("MinX:")
+        minX = QtGui.QLineEdit()
+        minX.setReadOnly(True)
         self.extentEdits.append(minX)
-
-        minY = QtGui.QLineEdit(self.tabs[2])
-        minY.setGeometry(265, 320, 120, 25)
+        
+        minYLabel = QtGui.QLabel("MinY:")
+        minY = QtGui.QLineEdit()
+        minY.setReadOnly(True)
         self.extentEdits.append(minY)
-
-        maxX = QtGui.QLineEdit(self.tabs[2])
-        maxX.setGeometry(350, 360, 120, 25)
+        
+        maxXLabel = QtGui.QLabel("MaxX:")
+        maxX = QtGui.QLineEdit()
+        maxX.setReadOnly(True)
         self.extentEdits.append(maxX)
-
-        maxY = QtGui.QLineEdit(self.tabs[2])
-        maxY.setGeometry(265, 400, 120, 25)
+        
+        maxYLabel = QtGui.QLabel("MaxY:")
+        maxY = QtGui.QLineEdit()
+        maxY.setReadOnly(True)
         self.extentEdits.append(maxY)
-
-        style = 'QLineEdit { background-color : #a6a6a6; color : white; }'
-        for edit in self.extentEdits:
-            edit.setReadOnly(True)
-            edit.lower()
-            edit.setStyleSheet(style)
-
-        self.origExtentButton = QtGui.QPushButton(self.tabs[2])
-        self.origExtentButton.setGeometry(100, 150, 190, 30)
-        self.origExtentButton.setText('Set original homview')
+        
+        # Arrange extent fields in a grid-like layout
+        extentGrid1 = QHBoxLayout()
+        extentGrid1.addWidget(minXLabel)
+        extentGrid1.addWidget(minX)
+        extentGrid1.addSpacing(20)
+        extentGrid1.addWidget(maxXLabel)
+        extentGrid1.addWidget(maxX)
+        
+        extentGrid2 = QHBoxLayout()
+        extentGrid2.addWidget(minYLabel)
+        extentGrid2.addWidget(minY)
+        extentGrid2.addSpacing(20)
+        extentGrid2.addWidget(maxYLabel)
+        extentGrid2.addWidget(maxY)
+        
+        extentLayout.addLayout(extentGrid1)
+        extentLayout.addLayout(extentGrid2)
+        
+        # Extent buttons
+        buttonLayout = QHBoxLayout()
+        
+        self.origExtentButton = QtGui.QPushButton('Set to original extent')
+        self.origExtentButton.setToolTip("Reset to the original map extent")
+        buttonLayout.addWidget(self.origExtentButton)
         self.moreObjects.append(self.origExtentButton)
-
-        self.qgsExtentButton = QtGui.QPushButton(self.tabs[2])
-        self.qgsExtentButton.setGeometry(290, 150, 190, 30)
-        self.qgsExtentButton.setText('Set current QGIS view')
-        self.moreObjects.append(self.qgsExtentButton)
-
-        self.homeviewEpsgWarning = QtGui.QLabel(self.tabs[2])
-        self.homeviewEpsgWarning.setGeometry(QRect(50, 220, 435, 80))
-        self.homeviewEpsgWarning.setFont(QFont('Arial', 9))
-
-        self.jumpButtonOrig = QtGui.QPushButton(self.tabs[2])
-        self.jumpButtonOrig.setGeometry(QRect(115, 192, 160, 20))
-        self.jumpButtonOrig.setText('Jump to original homeview')
-        self.jumpButtonOrig.setStyleSheet('QPushButton { background-color : #a6a6a6; color : white; }')
-
-        self.jumpButtonNew = QtGui.QPushButton(self.tabs[2])
-        self.jumpButtonNew.setGeometry(QRect(305, 192, 160, 20))
-        self.jumpButtonNew.setText('Jump to new homeview')
+        
+        self.jumpButtonOrig = QtGui.QPushButton('Jump to original homeview')
+        self.jumpButtonOrig.setToolTip("Jump to the original homeview")
+        buttonLayout.addWidget(self.jumpButtonOrig)
+        self.moreObjects.append(self.jumpButtonOrig)
+        
+        extentLayout.addLayout(buttonLayout)
+        
+        self.jumpButtonNew = QtGui.QPushButton('Jump to new homeview')
+        self.jumpButtonNew.setToolTip("Jump to the new homeview")
+        extentLayout.addWidget(self.jumpButtonNew)
         self.moreObjects.append(self.jumpButtonNew)
+        
+        layout.addWidget(extentGroup)
+        layout.addStretch()
 
+    def setupLayerTab(self):
+        """Setup the Layer tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Layer')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Layer')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Header
+        headerLayout = QHBoxLayout()
+        
+        allLayersLabel = QtGui.QLabel("All Layers")
+        font = QFont('Arial', 12)
+        font.setBold(True)
+        allLayersLabel.setFont(font)
+        allLayersLabel.setAlignment(Qt.AlignCenter)
+        
+        layerTreeLabel = QtGui.QLabel("Layer Tree")
+        layerTreeLabel.setFont(font)
+        layerTreeLabel.setAlignment(Qt.AlignCenter)
+        
+        headerLayout.addWidget(allLayersLabel)
+        headerLayout.addWidget(layerTreeLabel)
+        
+        layout.addLayout(headerLayout)
+        
+        # Content layout
+        contentLayout = QHBoxLayout()
+        
+        self.layerlistwidget = LayerListWidget(tab)
+        self.layertreewidget = LayerTreeWidget(tab)
+        
+        contentLayout.addWidget(self.layerlistwidget)
+        contentLayout.addWidget(self.layertreewidget)
+        
+        layout.addLayout(contentLayout)
 
-        #tab 3 = 'Layer' (layertree)
+    def setupPermissionsTab(self):
+        """Setup the Permissions tab with improved layout"""
+        tab = QtGui.QWidget()
+        tab.setObjectName('Permissions')
+        self.tabs.append(tab)
+        self.tabWidget.addTab(tab, 'Permissions')
+        
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+        
+        # Header
+        headerLayout = QHBoxLayout()
+        
+        usersLabel = QtGui.QLabel("Users")
+        font = QFont('Arial', 12)
+        font.setBold(True)
+        usersLabel.setFont(font)
+        usersLabel.setAlignment(Qt.AlignCenter)
+        
+        groupsLabel = QtGui.QLabel("Groups")
+        groupsLabel.setFont(font)
+        groupsLabel.setAlignment(Qt.AlignCenter)
+        
+        headerLayout.addWidget(usersLabel)
+        headerLayout.addWidget(groupsLabel)
+        
+        layout.addLayout(headerLayout)
+        
+        # Tables layout
+        tablesLayout = QHBoxLayout()
+        
+        self.usertabel = QtGui.QTableWidget()
+        self.grouptabel = QtGui.QTableWidget()
+        
+        tablesLayout.addWidget(self.usertabel)
+        tablesLayout.addWidget(self.grouptabel)
+        
+        layout.addLayout(tablesLayout)
 
-        self.layerlistwidget = LayerListWidget(self.tabs[3])
-        self.layerlistwidget.setGeometry(QRect(25, 70, 210, 350))
-
-        self.layertreewidget = LayerTreeWidget(self.tabs[3])
-        self.layertreewidget.setGeometry(QRect(260, 70, 210, 350))
-
-
-        #tab 4 = 'Permissions'
-        self.usertabel = QtGui.QTableWidget(self.tabs[4])
-        self.usertabel.setGeometry(QRect(10, 30, 230, 300))
-        self.usertabel.setColumnCount(3)
-        self.usertabel.setHorizontalHeaderLabels(['Read', 'Update', 'Delete'])
-        self.moreObjects.append(self.usertabel)
-
-        self.groupstabel = QtGui.QTableWidget(self.tabs[4])
-        self.groupstabel.setGeometry(QRect(250, 30, 230, 300))
-        self.groupstabel.setColumnCount(3)
-        self.groupstabel.setHorizontalHeaderLabels(['Read', 'Update', 'Delete'])
-        self.moreObjects.append(self.groupstabel)
-
-
-        #create Gui surrounding the tabs
-        self.editCheckBox = QtGui.QCheckBox(self)
-        self.editCheckBox.setGeometry(QRect(420, 10, 50, 17))
-        self.editCheckBox.setText('Edit')
-
-        self.pushButtonOk = QtGui.QPushButton(self)
-        self.pushButtonOk.setGeometry(QRect(420, 500, 85, 27))
-        self.pushButtonCancel = QtGui.QPushButton(self)
-        self.pushButtonCancel.setGeometry(QRect(320, 500, 85, 27))
-        self.pushButtonCancel.setText('Cancel')
-
-        self.warnLabel = QtGui.QLabel(self)
-        self.warnLabel.setGeometry(QRect(300, 505, 80, 15))
-        self.warnLabel.setText('Please fill out all mandatory fields')
-        self.warnLabel.setHidden(True)
-        self.warnLabel.setStyleSheet('QLabel { color : #ff6666; }')
+    def setupStyling(self):
+        """Apply modern styling to the dialog"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f5f5f5;
+                font-family: "Segoe UI", Arial, sans-serif;
+            }
+            QTabWidget::pane {
+                border: 1px solid #ccc;
+                background-color: white;
+                border-radius: 4px;
+            }
+            QTabWidget::tab-bar {
+                left: 5px;
+            }
+            QTabBar::tab {
+                background-color: #e1e1e1;
+                border: 1px solid #ccc;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: white;
+                border-bottom: 1px solid white;
+            }
+            QTabBar::tab:hover {
+                background-color: #d4edda;
+            }
+            QGroupBox {
+                font-weight: bold;
+                font-size: 12px;
+                border: 2px solid #cccccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+            QLineEdit, QComboBox {
+                padding: 6px;
+                border: 2px solid #ddd;
+                border-radius: 4px;
+                font-size: 12px;
+                background-color: white;
+                min-width: 120px;
+            }
+            QLineEdit:focus, QComboBox:focus {
+                border-color: #0066cc;
+            }
+            QLineEdit:read-only {
+                background-color: #f8f9fa;
+                color: #666;
+            }
+            QPushButton {
+                background-color: #0066cc;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 12px;
+                min-width: 80px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:pressed {
+                background-color: #004494;
+            }
+            QCheckBox {
+                spacing: 5px;
+                font-size: 12px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox::indicator:unchecked {
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QCheckBox::indicator:checked {
+                border: 2px solid #0066cc;
+                border-radius: 3px;
+                background-color: #0066cc;
+                image: url(data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='white' d='M10.3 3.7L5 9l-3.3-3.3 1.4-1.4L5 6.2l3.9-3.9z'/></svg>);
+            }
+            QTableWidget {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+                alternate-background-color: #f8f9fa;
+            }
+            QListWidget, QTreeWidget {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background-color: white;
+                alternate-background-color: #f8f9fa;
+            }
+        """)
 
     def setEditState(self, b):      #b = true or false
         if b:
