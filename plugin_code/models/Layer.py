@@ -47,3 +47,6 @@ class Layer(BaseEntity):
             features=data.get('features'),
             layerType=data.get('type')
         )
+
+    def get_id(self):
+        return self._id

@@ -51,8 +51,8 @@ class LayerService:
 
     def get_layers_by_ids(self, layer_ids: List[int]) -> List[Layer]:
         query = """
-        query GetLayers($id: Int) {
-            allLayersByIds(id: $id) {
+        query GetLayers($ids: [Int]) {
+            allLayersByIds(ids: $ids) {
                 id
                 created
                 modified
