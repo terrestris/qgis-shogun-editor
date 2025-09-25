@@ -22,6 +22,7 @@
 """
 
 import os
+from importlib import import_module
 
 from qgis.PyQt import QtWidgets, uic
 
@@ -39,4 +40,15 @@ class QgisShogunEditorDialog(QtWidgets.QDialog, FORM_CLASS):
         # self.<objectname>, and you can use autoconnect slots - see
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
+
+        if self.is_pip_available():
+            print('pip is available')
+
         self.setupUi(self)
+
+    def is_pip_available(self) -> bool:
+        try:
+            import_module("pip")  # noqa F401
+            return True
+        except ImportError:
+            return False
