@@ -1,5 +1,7 @@
 services:
     qgis:
+      extra_hosts:
+        - "gdawasser-local-dev.intranet.terrestris.de:192.168.100.115"
       image: qgis/qgis:3.44
       command: ["/bin/bash", "-c", "qgis"]
       environment:

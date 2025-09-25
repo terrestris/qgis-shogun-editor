@@ -223,6 +223,9 @@ class QgisShogunEditor:
 
             self.dlg.entryUrl.setPlaceholderText('Please enter an URL')
 
+            # TODO remove me
+            self.dlg.entryUrl.setText('https://gdawasser-local-dev.intranet.terrestris.de/gdawasser-boot/graphql')
+
             self.dlg.loadButton.clicked.connect(lambda: self.initialize_graphql_and_load_app_list())
 
             self.dlg.applicationsList.itemDoubleClicked.connect(self._handle_double_click)
@@ -237,7 +240,7 @@ class QgisShogunEditor:
                                              Qt.KeepAspectRatio, Qt.SmoothTransformation))
                 self.dlg.labelLogo.mousePressEvent = self.open_project_link
             else:
-                QgsMessageLog.logMessage("An error occured while try to open url: ", 'QgisShogunEditor',
+                QgsMessageLog.logMessage("An error occurred while try to open url: ", 'QgisShogunEditor',
                                          level=Qgis.Critical)
         # show the dialog
         self.dlg.show()
@@ -273,11 +276,6 @@ class QgisShogunEditor:
             if application.layer_tree is not None:
                 try:
                     QgsMessageLog.logMessage(
-                        f"Found layer tree: {application.layer_tree}",
-                        'QgisShogunEditor',
-                        level=Qgis.Info
-                    )
-                    QgsMessageLog.logMessage(
                         "Loading layertree to Qgis now.",
                         'QgisShogunEditor',
                         level=Qgis.Info
@@ -287,7 +285,8 @@ class QgisShogunEditor:
                     root.clear()
                     layer_ids = self.find_all_layer_ids(application.layer_tree)
                     layers_content = self.layer_service.get_layers_by_ids(layer_ids)
-                    self.buildLayerTree(application.layer_tree, layers_content, root)
+                    print(layers_content)
+                    self.build_layer_tree(application.layer_tree, layers_content, root)
                 except json.JSONDecodeError as e:
                     QgsMessageLog.logMessage(
                         f"Could not decode layer tree json: {e}", 'QgisShogunEditor',
@@ -321,36 +320,42 @@ class QgisShogunEditor:
         if event.button() == Qt.LeftButton:
             QDesktopServices.openUrl(QUrl("https://www.terrestris.de/de/"))
 
-    def createWmsLayerFromShogun(self, layer_src_conf):
-        layerNames = layer_src_conf['layerNames']
+    def create_wms_layer_from_shogun(self, layer_src_conf):
+        print(layer_src_conf)
+        layer_names = layer_src_conf['layerNames']
         layer_url = layer_src_conf['url']
         if str(layer_url).startswith('/'):
             layer_url = self.dlg.entryUrl.text() + layer_url
 
+        layer_url = layer_url.replace('gdawasser-boot/graphql/GDAWasser/geoserver.action', 'gdawasser-interceptor/geoserver.action')
+
         params = {
-            'layers': layerNames,
+            'layers': layer_names,
             'styles': '',
             'format': 'image/png',
             'crs': 'EPSG:' + str(QgsProject.instance().crs().srsid()),
             'url': layer_url
         }
 
-        # set transparency if present
-        try:
-            params['transparent'] = layer_src_conf['requestParams']['TRANSPARENT']
-            print('set transparent')
-        except KeyError:
-            print('no transparency')
+        # # set transparency if present
+        # try:
+        #     params['transparent'] = layer_src_conf['requestParams']['TRANSPARENT']
+        #     print('set transparent')
+        # except KeyError:
+        #     print('no transparency')
 
         uri = '&'.join([f"{k}={v}" for k, v in params.items()])
-        layer = QgsRasterLayer(uri, layerNames, 'wms')
+        layer = QgsRasterLayer(uri, layer_names, 'wms')
 
         if layer.isValid():
-            return layer
+            return {
+                'layer': layer,
+                'url': layer_url
+            }
         else:
             return False
 
-    def createLayer(self, layer_src_conf):
+    def create_layer(self, layer_src_conf):
         # layerurl = request_url
 
         # dataType = layerItem.datatype
@@ -367,7 +372,7 @@ class QgisShogunEditor:
         # elif dataType == 'WMS':
         #     if layerurl == '/shogun2-webapp/geoserver.action':
         #         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        return self.createWmsLayerFromShogun(layer_src_conf)
+        return self.create_wms_layer_from_shogun(layer_src_conf)
         # else:
         #     return createWmsLayer(layerItem, layerurl, epsg)
 
@@ -402,10 +407,8 @@ class QgisShogunEditor:
         #     info = 'Layer source '+ layerurl + ' could not be loaded'
         #     QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
 
-    def addQgsLayer(self, layer_src_conf, layer_group):
-        self.qgisLayers = []
-        # layerutils
-        layer = self.createLayer(layer_src_conf)
+    def add_qgs_layer(self, layer_src_conf, layer_group):
+        layer = self.create_layer(layer_src_conf)
         if not layer:
             QgsMessageLog.logMessage(
                 f"Could not create layer: {layer_src_conf}", 'QgisShogunEditor',
@@ -416,18 +419,21 @@ class QgisShogunEditor:
         QgsProject.instance().addMapLayer(layer, False)  # implicit addition
         layer_group.addLayer(layer)  # eplicit addition
 
-    def buildLayerTree(self, applications_layertree, layers_content, root):
+    def build_layer_tree(self, applications_layertree, layers_content, root):
+        new_group = root
         if 'layerId' not in applications_layertree:
             new_group = root.addGroup(applications_layertree['title'])  # option: take the name of the application
 
         if 'layerId' in applications_layertree:
             result = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']]
-            layer_src_conf = result[0].source_config
-            self.addQgsLayer(layer_src_conf, root)
+            if len(result) > 0 and result[0].source_config is not None:
+                layer_src_conf = result[0].source_config
+                print(layer_src_conf)
+                self.add_qgs_layer(layer_src_conf, root)
 
         if 'children' in applications_layertree:
             for child in applications_layertree['children']:
-                self.buildLayerTree(child, layers_content, new_group)
+                self.build_layer_tree(child, layers_content, new_group)
 
     def sanitize_shogun_url(self, shogun_url):
         if shogun_url.endswith('/graphql'):
