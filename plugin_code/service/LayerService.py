@@ -49,6 +49,24 @@ class LayerService:
         data = self.client.execute_query(query)
         return [Layer.from_dict(layer) for layer in data.get('allLayers', [])]
 
+    def get_layers_by_ids(self, layer_ids: List[int]) -> List[Layer]:
+        query = """
+        query GetLayers($id: Int) {
+            allLayersByIds(id: $id) {
+                id
+                created
+                modified
+                name
+                clientConfig
+                sourceConfig
+                features
+                type
+            }
+        }
+        """
+        data = self.client.execute_query(query, {'ids': layer_ids})
+        return [Layer.from_dict(layer) for layer in data.get('allLayersByIds', [])]
+
     def get_layer_by_id(self, layer_id: int) -> Optional[Layer]:
         query = """
         query GetLayer($id: Int) {
