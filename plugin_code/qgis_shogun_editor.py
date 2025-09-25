@@ -31,7 +31,7 @@ from qgis.core import (
     QgsNetworkAccessManager,
     QgsPointXY,
     QgsProject,
-    QgsRectangle,
+    QgsRasterLayer,
     QgsSettings,
 )
 
@@ -39,7 +39,7 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest, QSslSocket
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QMessageBox, QTreeWidgetItem
 
 from .models.Application import Application
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
@@ -216,7 +216,7 @@ class QgisShogunEditor:
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when thie plugin is started
+        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start:
             self.first_start = False
             self.dlg = QgisShogunEditorDialog()
@@ -239,8 +239,6 @@ class QgisShogunEditor:
             else:
                 QgsMessageLog.logMessage("An error occured while try to open url: ", 'QgisShogunEditor',
                                          level=Qgis.Critical)
-            # add link to github for help
-            # help_icon_path = os.path.join(os.path.dirname(__file__), "questionmark.png")
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
@@ -250,6 +248,18 @@ class QgisShogunEditor:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+    def find_all_layer_ids(self, layer_tree_json):
+        layer_ids = []
+
+        if "layerId" in layer_tree_json:
+            layer_ids.append(layer_tree_json["layerId"])
+
+        if "children" in layer_tree_json:
+            for child in layer_tree_json["children"]:
+                layer_ids.extend(self.find_all_layer_ids(child))
+
+        return layer_ids
 
     def _handle_double_click(self, item):
         QgsMessageLog.logMessage(
@@ -263,10 +273,21 @@ class QgisShogunEditor:
             if application.layer_tree is not None:
                 try:
                     QgsMessageLog.logMessage(
-                        f"Found layer tree {application.layer_tree}:",
+                        f"Found layer tree: {application.layer_tree}",
                         'QgisShogunEditor',
                         level=Qgis.Info
                     )
+                    QgsMessageLog.logMessage(
+                        "Loading layertree to Qgis now.",
+                        'QgisShogunEditor',
+                        level=Qgis.Info
+                    )
+
+                    root = QgsProject.instance().layerTreeRoot()
+                    root.clear()
+                    layer_ids = self.find_all_layer_ids(application.layer_tree)
+                    layers_content = self.layer_service.get_layers_by_ids(layer_ids)
+                    self.buildLayerTree(application.layer_tree, layers_content, root)
                 except json.JSONDecodeError as e:
                     QgsMessageLog.logMessage(
                         f"Could not decode layer tree json: {e}", 'QgisShogunEditor',
@@ -300,42 +321,113 @@ class QgisShogunEditor:
         if event.button() == Qt.LeftButton:
             QDesktopServices.openUrl(QUrl("https://www.terrestris.de/de/"))
 
-    def request_public_entity(self, url):
-        self.request.setUrl(QUrl(url))
+    def createWmsLayerFromShogun(self, layer_src_conf):
+        layerNames = layer_src_conf['layerNames']
+        layer_url = layer_src_conf['url']
+        if str(layer_url).startswith('/'):
+            layer_url = self.dlg.entryUrl.text() + layer_url
 
-        # no certificate
-        ssl_config = self.request.sslConfiguration()
-        ssl_config.setPeerVerifyMode(QSslSocket.VerifyNone)
-        self.request.setSslConfiguration(ssl_config)
+        params = {
+            'layers': layerNames,
+            'styles': '',
+            'format': 'image/png',
+            'crs': 'EPSG:' + str(QgsProject.instance().crs().srsid()),
+            'url': layer_url
+        }
 
-        # request public application
-        self.reply = self.na_manager.get(self.request)
-        event_loop = QEventLoop()
-        self.reply.finished.connect(event_loop.quit)
-        event_loop.exec_()  # blocs until finished
+        # set transparency if present
+        try:
+            params['transparent'] = layer_src_conf['requestParams']['TRANSPARENT']
+            print('set transparent')
+        except KeyError:
+            print('no transparency')
 
-        if self.reply.error() == self.reply.NoError:
-            self.response = self.reply.readAll().data().decode("utf-8")
-            # print("Response:", self.response)
+        uri = '&'.join([f"{k}={v}" for k, v in params.items()])
+        layer = QgsRasterLayer(uri, layerNames, 'wms')
+
+        if layer.isValid():
+            return layer
         else:
-            self.response = None
-            print("Error:", self.reply.errorString())
-        self.reply.deleteLater()
+            return False
 
-        return self.response
+    def createLayer(self, layer_src_conf):
+        # layerurl = request_url
 
-    def find_all_layer_ids(self, layer_tree_json):
-        layer_ids = []
+        # dataType = layerItem.datatype
 
-        if "layerId" in layer_tree_json:
-            print('Found layerId', layer_tree_json["layerId"])
-            layer_ids.append(layer_tree_json["layerId"])
+        # every layerItem.source should have an attribute 'dataType'
+        # if dataType == 'vector' or dataType == 'Vector':
+        #     url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+        #     return createWfsLayer(layerItem, url, epsg)
 
-        if "children" in layer_tree_json:
-            for child in layer_tree_json["children"]:
-                layer_ids.extend(self.find_all_layer_ids(child))
+        # elif dataType == 'Raster':
+        #     url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+        #     return createRasterLayer(layerItem, url, epsg)
 
-        return layer_ids
+        # elif dataType == 'WMS':
+        #     if layerurl == '/shogun2-webapp/geoserver.action':
+        #         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+        return self.createWmsLayerFromShogun(layer_src_conf)
+        # else:
+        #     return createWmsLayer(layerItem, layerurl, epsg)
+
+        # if for any reason the parameter 'dataType' is not set correctly, we check the url
+        # of the layer to determine if it's a WFS/WCS from the shogun-geoserver
+        # (url has'shogun2-webapp') or if it's a WMS from an outer source (other url)
+        # elif dataType == 'unknown' or dataType == None or dataType == '':
+        #     if layerurl.startswith('/shogun2-webapp'):
+        #         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
+        #         try:
+        #             lyr = createWfsLayer(layerItem, url, epsg)
+        #             if lyr.isValid():
+        #                 return lyr
+        #         except:
+        #             pass
+        #         try:
+        #             lyr =  createWmsLayerFromShogun(layerItem, url, epsg)
+        #             if lyr.isValid():
+        #                 return lyr
+        #         except:
+        #             pass
+        #         try:
+        #             lyr =  createRasterLayer(layerItem, url, epsg)
+        #             if lyr.isValid():
+        #                 return lyr
+        #         except:
+        #             pass
+        #     else:
+        #         return createWmsLayerNormal(layerItem, layerurl, epsg)
+
+        # else:
+        #     info = 'Layer source '+ layerurl + ' could not be loaded'
+        #     QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
+
+    def addQgsLayer(self, layer_src_conf, layer_group):
+        self.qgisLayers = []
+        # layerutils
+        layer = self.createLayer(layer_src_conf)
+        if not layer:
+            QgsMessageLog.logMessage(
+                f"Could not create layer: {layer_src_conf}", 'QgisShogunEditor',
+                level=Qgis.Critical
+            )
+            return
+
+        QgsProject.instance().addMapLayer(layer, False)  # implicit addition
+        layer_group.addLayer(layer)  # eplicit addition
+
+    def buildLayerTree(self, applications_layertree, layers_content, root):
+        if 'layerId' not in applications_layertree:
+            new_group = root.addGroup(applications_layertree['title'])  # option: take the name of the application
+
+        if 'layerId' in applications_layertree:
+            result = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']]
+            layer_src_conf = result[0].source_config
+            self.addQgsLayer(layer_src_conf, root)
+
+        if 'children' in applications_layertree:
+            for child in applications_layertree['children']:
+                self.buildLayerTree(child, layers_content, new_group)
 
     def sanitize_shogun_url(self, shogun_url):
         if shogun_url.endswith('/graphql'):
