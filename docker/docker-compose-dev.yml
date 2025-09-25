@@ -1,7 +1,7 @@
 services:
     qgis:
       image: qgis/qgis:3.44
-      command: ["/bin/bash", "-c", "qgis /root/shogun_qgis_konfigurator.qgs"]
+      command: ["/bin/bash", "-c", "qgis"]
       environment:
         DISPLAY: "unix${DISPLAY}"
         RUN_IN_DOCKER: "1"
@@ -11,4 +11,3 @@ services:
         - /tmp/.X11-unix:/tmp/.X11-unix
         - ./qgis_plugins:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins
         - ../plugin_code:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis-shogun-editor
-        - ./shogun_qgis_konfigurator.qgs:/root/shogun_qgis_konfigurator.qgs

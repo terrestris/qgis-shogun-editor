@@ -26,8 +26,12 @@ import os.path
 from qgis.core import (
     Qgis,
     QgsBrowserModel,
+    QgsCoordinateReferenceSystem,
     QgsMessageLog,
     QgsNetworkAccessManager,
+    QgsPointXY,
+    QgsProject,
+    QgsRectangle,
     QgsSettings,
 )
 
@@ -37,10 +41,11 @@ from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest, QSslSocket
 from qgis.PyQt.QtWidgets import QAction
 
-# Import the code for the dialog
+from .models.Application import Application
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
 from .service.Application import ApplicationService
 from .service.GraphQLClient import GraphQLClient
+from .service.LayerService import LayerService
 
 
 class QgisShogunEditor:
@@ -55,6 +60,9 @@ class QgisShogunEditor:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
+        self.layer_service = None
+        self.app_service = None
+        self.graphql_client = None
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -208,14 +216,16 @@ class QgisShogunEditor:
         """Run method that performs all the real work"""
 
         # Create the dialog with elements (after translation) and keep reference
-        # Only create GUI ONCE in callback, so that it will only load when the plugin is started
+        # Only create GUI ONCE in callback, so that it will only load when thie plugin is started
         if self.first_start:
             self.first_start = False
             self.dlg = QgisShogunEditorDialog()
 
             self.dlg.entryUrl.setPlaceholderText('Please enter an URL')
 
-            self.dlg.loadButton.clicked.connect(lambda: self.load_applications_graphql())
+            self.dlg.loadButton.clicked.connect(lambda: self.initialize_graphql_and_load_app_list())
+
+            self.dlg.applicationsList.itemDoubleClicked.connect(self._handle_double_click)
 
             # add logo
             logo_path = os.path.join(os.path.dirname(__file__), "shogun_logo.png")
@@ -240,6 +250,51 @@ class QgisShogunEditor:
             # Do something useful here - delete the line containing pass and
             # substitute with your code.
             pass
+
+    def _handle_double_click(self, item):
+        QgsMessageLog.logMessage(
+            f"You selected: {item.text()} - application id is: {item.application_id}", 'QgisShogunEditor',
+            level=Qgis.Info
+        )
+        QgsProject.instance().setTitle(item.text())
+        application = self.app_service.get_application_by_id(item.application_id)
+        self.apply_mapview(application)
+        if application is not None:
+            if application.layer_tree is not None:
+                try:
+                    QgsMessageLog.logMessage(
+                        f"Found layer tree {application.layer_tree}:",
+                        'QgisShogunEditor',
+                        level=Qgis.Info
+                    )
+                except json.JSONDecodeError as e:
+                    QgsMessageLog.logMessage(
+                        f"Could not decode layer tree json: {e}", 'QgisShogunEditor',
+                        level=Qgis.Critical
+                    )
+            else:
+                QgsMessageLog.logMessage("Application has no layer tree", 'QgisShogunEditor', level=Qgis.Warning)
+
+    def apply_mapview(self, application: Application):
+        qgis_project = QgsProject.instance()
+        client_config = application.client_config
+        if client_config is not None and 'mapView' in client_config:
+            map_view = client_config.get('mapView')
+            projection = map_view.get('projection')
+            center = map_view.get('center')
+            crs = QgsCoordinateReferenceSystem(projection)
+            qgis_project.setCrs(crs)
+
+            map_canvas = self.iface.mapCanvas()
+            map_canvas.setCenter(QgsPointXY(center[0], center[1]))
+
+            zoom = map_view.get('zoom')
+            resolutions = map_view.get('resolutions')
+            if resolutions is not None and zoom is not None and zoom < len(resolutions):
+                resolution = resolutions[zoom]
+                dpi = 25.4 / 0.28
+                inches_per_meter = 39.37
+                map_canvas.zoomScale(resolution * dpi * inches_per_meter)
 
     def open_project_link(self, event):
         if event.button() == Qt.LeftButton:
@@ -292,14 +347,17 @@ class QgisShogunEditor:
             shogun_url += '/graphql'
             return shogun_url
 
-    # Example usage in your code
-    def load_applications_graphql(self):
-        shogun_endpoint_url = self.dlg.entryUrl.text()
-        client = GraphQLClient(shogun_endpoint_url)
+    def initialize_graphql_client(self):
+        sanitized_url = self.sanitize_shogun_url(self.dlg.entryUrl.text().strip())
+        self.graphql_client = GraphQLClient(sanitized_url)
+        self.app_service = ApplicationService(self.graphql_client)
+        self.layer_service = LayerService(self.graphql_client)
 
-        app_service = ApplicationService(client)
-        applications = app_service.get_all_applications()
+    # Example usage in your code
+    def initialize_graphql_and_load_app_list(self):
+        self.initialize_graphql_client()
+        applications = self.app_service.get_all_applications_simple()
         if applications is not None:
             self.dlg.applicationsList.clear()
             for app in applications:
-                self.dlg.applicationsList.addItem(app.name)
+                self.dlg.applicationsList.addItem(app.get_qt_list_item())
