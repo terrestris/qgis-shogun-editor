@@ -22,6 +22,7 @@
 """
 import json
 import os.path
+import urllib
 
 from qgis.core import (
     Qgis,
@@ -33,13 +34,14 @@ from qgis.core import (
     QgsProject,
     QgsRasterLayer,
     QgsSettings,
+    QgsVectorLayer
 )
 
 # some things for doing http requests
-from qgis.PyQt.QtCore import QCoreApplication, QEventLoop, QSettings, Qt, QTranslator, QUrl
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QUrl
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
-from qgis.PyQt.QtNetwork import QNetworkRequest, QSslSocket
-from qgis.PyQt.QtWidgets import QAction, QMessageBox, QTreeWidgetItem
+from qgis.PyQt.QtNetwork import QNetworkRequest
+from qgis.PyQt.QtWidgets import QAction
 
 from .models.Application import Application
 from .qgis_shogun_editor_dialog import QgisShogunEditorDialog
@@ -350,80 +352,97 @@ class QgisShogunEditor:
         else:
             return False
 
-    def createLayer(self, layer_src_conf):
-        # layerurl = request_url
+    def createTileWmsLayerFromShogun(self, layer_src_conf):
+        layerNames = layer_src_conf['layerNames']
+        layer_url = layer_src_conf['url']
+        if str(layer_url).startswith('/'):
+            layer_url = self.dlg.entryUrl.text() + layer_url
 
-        # dataType = layerItem.datatype
+        params = {
+            'layers': layerNames,
+            'styles': '',
+            'format': 'image/png',
+            'crs': 'EPSG:' + str(QgsProject.instance().crs().srsid()),
+            'url': layer_url,
+            'tiled': 'true'
+        }
 
-        # every layerItem.source should have an attribute 'dataType'
-        # if dataType == 'vector' or dataType == 'Vector':
-        #     url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        #     return createWfsLayer(layerItem, url, epsg)
+        # set transparency if present
+        try:
+            params['transparent'] = layer_src_conf['requestParams']['TRANSPARENT']
+            print('set transparent')
+        except KeyError:
+            print('no transparency')
 
-        # elif dataType == 'Raster':
-        #     url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        #     return createRasterLayer(layerItem, url, epsg)
+        uri = '&'.join([f"{k}={v}" for k, v in params.items()])
+        layer = QgsRasterLayer(uri, layerNames, 'wms')
 
-        # elif dataType == 'WMS':
-        #     if layerurl == '/shogun2-webapp/geoserver.action':
-        #         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        return self.createWmsLayerFromShogun(layer_src_conf)
-        # else:
-        #     return createWmsLayer(layerItem, layerurl, epsg)
+        if layer.isValid():
+            return layer
+        else:
+            return False
 
-        # if for any reason the parameter 'dataType' is not set correctly, we check the url
-        # of the layer to determine if it's a WFS/WCS from the shogun-geoserver
-        # (url has'shogun2-webapp') or if it's a WMS from an outer source (other url)
-        # elif dataType == 'unknown' or dataType == None or dataType == '':
-        #     if layerurl.startswith('/shogun2-webapp'):
-        #         url = layerItem.ressource.baseurl.rstrip('/shogun2-webapp/') + layerurl + '?'
-        #         try:
-        #             lyr = createWfsLayer(layerItem, url, epsg)
-        #             if lyr.isValid():
-        #                 return lyr
-        #         except:
-        #             pass
-        #         try:
-        #             lyr =  createWmsLayerFromShogun(layerItem, url, epsg)
-        #             if lyr.isValid():
-        #                 return lyr
-        #         except:
-        #             pass
-        #         try:
-        #             lyr =  createRasterLayer(layerItem, url, epsg)
-        #             if lyr.isValid():
-        #                 return lyr
-        #         except:
-        #             pass
-        #     else:
-        #         return createWmsLayerNormal(layerItem, layerurl, epsg)
+    def createWfsLayerFromShogun(self, layer_src_conf):
+        layerNames = layer_src_conf['layerNames']
+        layer_url = layer_src_conf['url']
+        if str(layer_url).startswith('/'):
+            layer_url = self.dlg.entryUrl.text() + layer_url
 
-        # else:
-        #     info = 'Layer source '+ layerurl + ' could not be loaded'
-        #     QMessageBox.warning(None, 'Warning', info, QMessageBox.Ok)
+        params = {
+            'service': 'WFS',
+            'version': '2.0.0',
+            'request': 'GetFeature',
+            'typename': layerNames,
+            'srsname': 'EPSG:' + str(QgsProject.instance().crs().srsid())
+        }
 
-    def addQgsLayer(self, layer_src_conf, layer_group):
+        uri = layer_url + urllib.parse.unquote(urllib.parse.urlencode(params))
+        layer = QgsVectorLayer(uri, layerNames, 'WFS')
+
+        if layer.isValid():
+            return layer
+        else:
+            return False
+
+    def createLayer(self, layer_in_tree):
+        layer_src_conf = layer_in_tree.source_config
+        data_type = layer_in_tree.layerType
+        print('createLayer', )
+
+        if data_type == 'WMS':
+            print('create WMS layer')
+            return self.createWmsLayerFromShogun(layer_src_conf)
+
+        elif data_type == 'TILEWMS':
+            print('create TILEWMS layer')
+            return self.createTileWmsLayerFromShogun(layer_src_conf)
+
+        elif data_type == 'WFS':
+            print('create WFS layer')
+            return self.createWfsLayerFromShogun(layer_src_conf)
+
+    def addQgsLayer(self, layer_in_tree, layer_group):
         self.qgisLayers = []
         # layerutils
-        layer = self.createLayer(layer_src_conf)
+        layer = self.createLayer(layer_in_tree)
         if not layer:
             QgsMessageLog.logMessage(
-                f"Could not create layer: {layer_src_conf}", 'QgisShogunEditor',
+                f"Could not create layer: {layer_in_tree}", 'QgisShogunEditor',
                 level=Qgis.Critical
             )
             return
 
         QgsProject.instance().addMapLayer(layer, False)  # implicit addition
         layer_group.addLayer(layer)  # eplicit addition
+        return layer
 
     def buildLayerTree(self, applications_layertree, layers_content, root):
         if 'layerId' not in applications_layertree:
             new_group = root.addGroup(applications_layertree['title'])  # option: take the name of the application
 
         if 'layerId' in applications_layertree:
-            result = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']]
-            layer_src_conf = result[0].source_config
-            self.addQgsLayer(layer_src_conf, root)
+            layer_in_tree = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']][0]
+            layer = self.addQgsLayer(layer_in_tree, root)
 
         if 'children' in applications_layertree:
             for child in applications_layertree['children']:
