@@ -442,7 +442,7 @@ class QgisShogunEditor:
 
         if 'layerId' in applications_layertree:
             layer_in_tree = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']][0]
-            layer = self.addQgsLayer(layer_in_tree, root)
+            self.addQgsLayer(layer_in_tree, root)
 
         if 'children' in applications_layertree:
             for child in applications_layertree['children']:
