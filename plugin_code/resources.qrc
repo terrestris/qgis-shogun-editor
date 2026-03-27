@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="/plugins/qgis_shogun_editor" >
-        <file>icon.png</file>
+        <file>shogun_logo.png</file>
     </qresource>
 </RCC>
