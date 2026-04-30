@@ -287,15 +287,15 @@ class QgisShogunEditor:
                     )
 
                     root = QgsProject.instance().layerTreeRoot()
-                    #disconnect old connections and clear root
+                    # disconnect old connections and clear root
                     try:
                         root.visibilityChanged.disconnect(self.on_visibility_changed)
                     except TypeError:
                         QgsMessageLog.logMessage(
-                        "Could not remove the signal visibilityChanged",
-                        'QgisShogunEditor',
-                        level=Qgis.Info
-                    )
+                            "Could not remove the signal visibilityChanged",
+                            'QgisShogunEditor',
+                            level=Qgis.Info
+                        )
                     root.clear()
 
                     layer_ids = self.find_all_layer_ids(application.layer_tree)
@@ -489,7 +489,7 @@ class QgisShogunEditor:
         else:
             layer_group_layer = layer_group.addLayer(layer)
 
-        if title or title !='':
+        if title or title != '':
             layer_group_layer.setName(title)
         if layer_is_visible:
             QgsProject.instance().addMapLayer(layer, False)  # implicit addition
