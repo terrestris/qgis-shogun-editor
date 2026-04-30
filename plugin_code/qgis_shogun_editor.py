@@ -28,17 +28,18 @@ from qgis.core import (
     Qgis,
     QgsBrowserModel,
     QgsCoordinateReferenceSystem,
+    QgsLayerTreeGroup,
     QgsMessageLog,
     QgsNetworkAccessManager,
     QgsPointXY,
     QgsProject,
     QgsRasterLayer,
     QgsSettings,
-    QgsVectorLayer
+    QgsVectorLayer,
+    QgsLayerTreeLayer
 )
 
-# some things for doing http requests
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QUrl
+from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt, QTranslator, QUrl, QTimer
 from qgis.PyQt.QtGui import QDesktopServices, QIcon, QPixmap
 from qgis.PyQt.QtNetwork import QNetworkRequest
 from qgis.PyQt.QtWidgets import QAction
@@ -286,10 +287,21 @@ class QgisShogunEditor:
                     )
 
                     root = QgsProject.instance().layerTreeRoot()
+                    #disconnect old connections and clear root
+                    try:
+                        root.visibilityChanged.disconnect(self.on_visibility_changed)
+                    except TypeError:
+                        QgsMessageLog.logMessage(
+                        "Could not remove the signal visibilityChanged",
+                        'QgisShogunEditor',
+                        level=Qgis.Info
+                    )
                     root.clear()
+
                     layer_ids = self.find_all_layer_ids(application.layer_tree)
                     layers_content = self.layer_service.get_layers_by_ids(layer_ids)
                     self.buildLayerTree(application.layer_tree, layers_content, root)
+                    root.visibilityChanged.connect(self.on_visibility_changed)
                 except json.JSONDecodeError as e:
                     QgsMessageLog.logMessage(
                         f"Could not decode layer tree json: {e}", 'QgisShogunEditor',
@@ -318,6 +330,45 @@ class QgisShogunEditor:
                 dpi = 25.4 / 0.28
                 inches_per_meter = 39.37
                 map_canvas.zoomScale(resolution * dpi * inches_per_meter)
+
+    def on_visibility_changed(self, node):
+        if isinstance(node, QgsLayerTreeLayer):
+            is_visible = node.isVisible()
+            is_loaded = node.customProperty('loaded', False)
+            if is_loaded:
+                return
+            if not is_visible:
+                return
+
+            layer_in_tree = node.customProperty('layer_in_tree')
+            layer_group = node.customProperty('layer_group')
+            if not layer_in_tree:
+                return
+
+            parent_node = node.parent()
+            if not parent_node:
+                return
+
+            index = parent_node.children().index(node)
+            layer = self.addQgsLayer(
+                layer_in_tree,
+                layer_group,
+                True,
+                node.name(),
+                index
+            )
+            if not layer:
+                return
+
+            QTimer.singleShot(
+                0,
+                lambda n=node, p=parent_node: p.removeChildNode(n)
+            )
+            node.setCustomProperty('loaded', True)
+            return
+
+        elif isinstance(node, QgsLayerTreeGroup):
+            return
 
     def open_project_link(self, event):
         if event.button() == Qt.LeftButton:
@@ -421,7 +472,7 @@ class QgisShogunEditor:
             print('create WFS layer')
             return self.createWfsLayerFromShogun(layer_src_conf)
 
-    def addQgsLayer(self, layer_in_tree, layer_group):
+    def addQgsLayer(self, layer_in_tree, layer_group, layer_is_visible, title, index=None):
         self.qgisLayers = []
         # layerutils
         layer = self.createLayer(layer_in_tree)
@@ -432,21 +483,39 @@ class QgisShogunEditor:
             )
             return
 
-        QgsProject.instance().addMapLayer(layer, False)  # implicit addition
-        layer_group.addLayer(layer)  # eplicit addition
+        # explicit addition
+        if index is not None:
+            layer_group_layer = layer_group.insertLayer(index, layer)
+        else:
+            layer_group_layer = layer_group.addLayer(layer)
+
+        if title or title !='':
+            layer_group_layer.setName(title)
+        if layer_is_visible:
+            QgsProject.instance().addMapLayer(layer, False)  # implicit addition
         return layer
 
     def buildLayerTree(self, applications_layertree, layers_content, root):
         if 'layerId' not in applications_layertree:
             new_group = root.addGroup(applications_layertree['title'])  # option: take the name of the application
+            new_group.setItemVisibilityChecked(applications_layertree.get('checked', True))
+
+            if 'children' in applications_layertree:
+                for child in applications_layertree['children']:
+                    self.buildLayerTree(child, layers_content, new_group)
+            return new_group
 
         if 'layerId' in applications_layertree:
-            layer_in_tree = [layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']][0]
-            self.addQgsLayer(layer_in_tree, root)
-
-        if 'children' in applications_layertree:
-            for child in applications_layertree['children']:
-                self.buildLayerTree(child, layers_content, new_group)
+            layer_in_tree = next((layer for layer in layers_content if layer.get_id() == applications_layertree['layerId']), None)
+            layer_is_visible = applications_layertree.get('checked', False)
+            layer = self.addQgsLayer(layer_in_tree, root, layer_is_visible, applications_layertree['title'])
+            if layer:
+                layer_node = root.findLayer(layer.id())
+                if layer_node:
+                    layer_node.setItemVisibilityChecked(layer_is_visible)
+                    layer_node.setCustomProperty('layer_in_tree', layer_in_tree)
+                    layer_node.setCustomProperty('layer_group', root)
+            return layer
 
     def sanitize_shogun_url(self, shogun_url):
         if shogun_url.endswith('/graphql'):
