@@ -1,0 +1,13 @@
+services:
+    qgis:
+      image: qgis/qgis:3.44
+      command: ["/bin/bash", "-c", "qgis"]
+      environment:
+        DISPLAY: "unix${DISPLAY}"
+        RUN_IN_DOCKER: "1"
+      ports:
+        - "5678:5678"
+      volumes:
+        - /tmp/.X11-unix:/tmp/.X11-unix
+        - ./qgis_plugins:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+        - ../plugin_code:/root/.local/share/QGIS/QGIS3/profiles/default/python/plugins/qgis-shogun-editor

@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+docker/qgis_plugins/*
+plugin_code/shogun_qgis_venv/
 
 # C extensions
 *.so
@@ -102,3 +104,7 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Intellij IDEA
+.idea/
+*.iml
